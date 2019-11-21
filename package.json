@@ -1,0 +1,69 @@
+{
+  "name": "react-hook-form-persist",
+  "version": "1.0.0",
+  "description": "Persist and populate react-hook-form form using storage of your choice",
+  "main": "dist/react-hook-form-persist.js",
+  "source": "src/index.js",
+  "scripts": {
+    "prepublish": "npm run build",
+    "postversion": "npm publish",
+    "preversion": "npm run test",
+    "pretest": "npm run lint",
+    "test": "jest",
+    "lint": "standard --fix",
+    "coverage": "jest --coverage",
+    "build": "microbundle -o dist/ --sourcemap false --compress false --jsx React.createElement --format cjs",
+    "dev": "microbundle watch -o dist/ --sourcemap false --compress false --jsx React.createElement --format cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tiaanduplessis/react-hook-form-persist.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "react-hook-form",
+    "persist",
+    "storage",
+    "store",
+    "localstorage",
+    "sessionstorage"
+  ],
+  "author": "Tiaan du Plessis <tiaanduplessis@hotmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tiaanduplessis/react-hook-form-persist/issues"
+  },
+  "homepage": "https://github.com/tiaanduplessis/react-hook-form-persist#readme",
+  "devDependencies": {
+    "@babel/plugin-proposal-class-properties": "7.7.0",
+    "@babel/preset-env": "7.7.1",
+    "@babel/preset-react": "7.7.0",
+    "babel-eslint": "10.0.3",
+    "babel-jest": "24.9.0",
+    "babel-polyfill": "6.26.0",
+    "jest": "24.9.0",
+    "microbundle": "0.11.0",
+    "mutation-observer": "^1.0.3",
+    "react": "16.8.6",
+    "react-dom": "16.8.6",
+    "react-hook-form": "^3.28.2",
+    "standard": "12.0.1"
+  },
+  "peerDependencies": {
+    "react": "^16.8.6",
+    "react-hook-form": "^3"
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "ignore": "dist",
+    "env": {
+      "jest": true,
+      "browser": true
+    }
+  },
+  "dependencies": {
+    "@testing-library/react": "^9.3.2"
+  }
+}
