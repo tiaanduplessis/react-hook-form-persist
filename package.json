@@ -45,10 +45,10 @@
     "babel-polyfill": "6.26.0",
     "jest": "24.9.0",
     "microbundle": "0.11.0",
-    "mutation-observer": "^1.0.3",
+    "mutation-observer": "1.0.3",
     "react": "16.8.6",
     "react-dom": "16.8.6",
-    "react-hook-form": "^3.28.2",
+    "react-hook-form": "3.28.2",
     "standard": "12.0.1"
   },
   "peerDependencies": {
