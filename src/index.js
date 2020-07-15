@@ -1,14 +1,19 @@
 import { useEffect } from 'react'
 
-const useFormPersist = (name, { watch, setValue }, { storage = window.sessionStorage, ignore = [] } = {}) => {
-  const values = watch()
+const useFormPersist = (
+  name,
+  { watch, setValue },
+  { storage = window.sessionStorage, exlude = [], include } = {}
+) => {
+  const values = watch(include)
 
   useEffect(() => {
     const str = storage.getItem(name)
     if (str) {
       const values = JSON.parse(str)
       Object.keys(values).forEach(key => {
-        if (!ignore.includes(key)) {
+        const shouldSet = !exlude.includes(key)
+        if (shouldSet) {
           setValue(key, values[key])
         }
       })

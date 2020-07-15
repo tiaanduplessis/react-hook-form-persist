@@ -29,7 +29,7 @@ function App() {
 
   useFormPersist("foo", {watch, setValue}, {
     storage: window.localStorage, // default window.sessionStorage
-    ignore: ['foo'],
+    exclude: ['foo']
   });
 
 
@@ -57,6 +57,27 @@ function App() {
 const rootElement = document.getElementById("root");
 ReactDOM.render(<App />, rootElement);
 
+```
+
+### Additional examples
+
+
+Persist all form fields:
+
+```js
+useFormPersist('form', {watch, setValue});
+```
+
+Persist all form fields except password:
+
+```js
+useFormPersist('form', {watch, setValue}, { exclude: ['password'] });
+```
+
+Persist only the email field:
+
+```js
+useFormPersist('form', {watch, setValue}, { include: ['email'] });
 ```
 
 

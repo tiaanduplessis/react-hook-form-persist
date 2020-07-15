@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, cleanup } from '@testing-library/react'
-import useForm from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import useFormPersist from '../'
 import MutationObserver from 'mutation-observer'
 
