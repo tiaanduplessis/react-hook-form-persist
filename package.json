@@ -44,7 +44,7 @@
     "babel-jest": "24.9.0",
     "babel-polyfill": "6.26.0",
     "jest": "24.9.0",
-    "microbundle": "0.11.0",
+    "microbundle": "^0.12.3",
     "mutation-observer": "1.0.3",
     "react": "16.8.6",
     "react-dom": "16.8.6",
