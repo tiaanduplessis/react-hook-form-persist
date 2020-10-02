@@ -5,7 +5,7 @@ const useFormPersist = (
   { watch, setValue },
   {
     storage = window.sessionStorage,
-    exlude = [],
+    exclude = [],
     include,
     onDataRestored
   } = {}
@@ -19,7 +19,7 @@ const useFormPersist = (
       const dataRestored = {}
 
       Object.keys(values).forEach(key => {
-        const shouldSet = !exlude.includes(key)
+        const shouldSet = !exclude.includes(key)
         if (shouldSet) {
           dataRestored[key] = values[key]
           setValue(key, values[key])
