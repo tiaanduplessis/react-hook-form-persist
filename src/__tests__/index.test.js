@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, cleanup } from '@testing-library/react'
+import { act, render, fireEvent, cleanup } from '@testing-library/react'
 import { useForm } from 'react-hook-form'
 import useFormPersist from '../'
 import MutationObserver from 'mutation-observer'
@@ -12,39 +12,107 @@ afterEach(cleanup)
 
 const wait = () => new Promise(resolve => setTimeout(resolve, 1000))
 
-test('Store should persist form state in storage', async () => {
-  const internal = {}
+const storageFactory = () => ({
+  memory: {},
+  getItem: jest.fn(function (key) {
+    const value = this.memory[key]
+    return typeof value === 'string' ? JSON.parse(value) : undefined
+  }),
+  setItem: jest.fn(function (key, value) {
+    this.memory[key] = value
+  })
+})
 
-  const storage = {
-    getItem: jest.fn(() => {}),
-    setItem: jest.fn((key, val) => {
-      internal.key = key
-      internal.val = JSON.parse(val)
-    })
-  }
+const STORAGE_KEY = 'storageKey'
 
-  function Form () {
-    const { register, handleSubmit, watch, setValue } = useForm()
+describe('Form persist hook', async () => {
+  test('should persist all form fields in storage', async () => {
+    const storage = storageFactory()
 
-    useFormPersist('foo', { watch, setValue }, { storage })
+    function Form () {
+      const { register, handleSubmit, watch, setValue } = useForm()
 
-    const onSubmit = data => {
-      console.log(data)
+      useFormPersist(STORAGE_KEY, { watch, setValue }, { storage })
+
+      return (
+        <form data-testid='form' onSubmit={handleSubmit(() => null)}>
+          <input name='foo' defaultValue='bar' ref={register} />
+          <input name='baz' defaultValue='qux' ref={register} />
+          <input type='submit' />
+        </form>
+      )
     }
 
-    return (
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <input name='bar' defaultValue='foo' ref={register} />
-        <input type='submit' />
-      </form>
-    )
-  }
+    act(() => {
+      const { getByTestId } = render(<Form />)
+      fireEvent.submit(getByTestId('form'))
+    })
 
-  render(<Form />)
+    await wait()
 
-  await wait()
+    expect(storage.getItem).toHaveBeenCalled()
+    expect(storage.setItem).toHaveBeenCalled()
+    expect(storage.getItem(STORAGE_KEY)).toEqual({
+      foo: 'bar',
+      baz: 'qux'
+    })
+  })
 
-  expect(storage.getItem).toHaveBeenCalled()
-  expect(storage.setItem).toHaveBeenCalled()
-  expect(internal.key).toBe('foo')
+  test('should persist only specified fields in storage', async () => {
+    const storage = storageFactory()
+
+    function Form () {
+      const { register, handleSubmit, watch, setValue } = useForm()
+
+      useFormPersist(STORAGE_KEY, { watch, setValue }, { storage, include: ['foo'] })
+
+      return (
+        <form data-testid='form' onSubmit={handleSubmit(() => null)}>
+          <input name='foo' defaultValue='bar' ref={register} />
+          <input name='baz' defaultValue='qux' ref={register} />
+          <input type='submit' />
+        </form>
+      )
+    }
+
+    act(() => {
+      const { getByTestId } = render(<Form />)
+      fireEvent.submit(getByTestId('form'))
+    })
+
+    await wait()
+
+    expect(storage.getItem).toHaveBeenCalled()
+    expect(storage.setItem).toHaveBeenCalled()
+    expect(storage.getItem(STORAGE_KEY)).toEqual({ foo: 'bar' })
+  })
+
+  test('should not persist excluded fields in storage', async () => {
+    const storage = storageFactory()
+
+    function Form () {
+      const { register, handleSubmit, watch, setValue } = useForm()
+
+      useFormPersist(STORAGE_KEY, { watch, setValue }, { storage, exclude: ['baz'] })
+
+      return (
+        <form data-testid='form' onSubmit={handleSubmit(() => null)}>
+          <input name='foo' defaultValue='bar' ref={register} />
+          <input name='baz' defaultValue='qux' ref={register} />
+          <input type='submit' />
+        </form>
+      )
+    }
+
+    act(() => {
+      const { getByTestId } = render(<Form />)
+      fireEvent.submit(getByTestId('form'))
+    })
+
+    await wait()
+
+    expect(storage.getItem).toHaveBeenCalled()
+    expect(storage.setItem).toHaveBeenCalled()
+    expect(storage.getItem(STORAGE_KEY)).toEqual({ foo: 'bar' })
+  })
 })
