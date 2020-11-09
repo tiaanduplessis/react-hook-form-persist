@@ -39,14 +39,14 @@ function App() {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <label htmlFor="foo">foo:</label>
-      <input name="foo" defaultValue="bar" ref={register} />
+      <input name="foo" ref={register} />
 
-      <label htmlFor="required">required:</label>
-      <input name="required" ref={register({ required: true })} />
+      <label htmlFor="bar">bar (required):</label>
+      <input name="bar" ref={register({ required: true })} />
       {errors.required && <span>This field is required</span>}
 
-      <label htmlFor="baz">baz:</label>
-      <input name="baz" defaultValue="excludedValue" ref={register} />
+      <label htmlFor="baz">baz (excluded):</label>
+      <input name="baz" ref={register} />
 
       <input type="submit" />
     </form>
