@@ -20,7 +20,7 @@
 ```js
 import React from "react";
 import ReactDOM from "react-dom";
-import useForm from "react-hook-form"
+import { useForm } from "react-hook-form";
 
 import useFormPersist from 'react-hook-form-persist'
 
