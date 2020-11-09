@@ -16,7 +16,7 @@ const storageFactory = () => ({
   memory: {},
   getItem: jest.fn(function (key) {
     const value = this.memory[key]
-    return typeof value === 'string' ? JSON.parse(value) : undefined
+    return typeof value === 'string' ? JSON.parse(value) : null
   }),
   setItem: jest.fn(function (key, value) {
     this.memory[key] = value
@@ -36,8 +36,9 @@ describe('Form persist hook', async () => {
 
       return (
         <form data-testid='form' onSubmit={handleSubmit(() => null)}>
-          <input name='foo' defaultValue='bar' ref={register} />
-          <input name='baz' defaultValue='qux' ref={register} />
+          <input name='foo' defaultValue='fooValue' ref={register} />
+          <input name='bar' defaultValue='barValue' ref={register} />
+          <input name='baz' defaultValue='bazValue' ref={register} />
           <input type='submit' />
         </form>
       )
@@ -53,8 +54,9 @@ describe('Form persist hook', async () => {
     expect(storage.getItem).toHaveBeenCalled()
     expect(storage.setItem).toHaveBeenCalled()
     expect(storage.getItem(STORAGE_KEY)).toEqual({
-      foo: 'bar',
-      baz: 'qux'
+      foo: 'fooValue',
+      bar: 'barValue',
+      baz: 'bazValue'
     })
   })
 
@@ -64,12 +66,13 @@ describe('Form persist hook', async () => {
     function Form () {
       const { register, handleSubmit, watch, setValue } = useForm()
 
-      useFormPersist(STORAGE_KEY, { watch, setValue }, { storage, include: ['foo'] })
+      useFormPersist(STORAGE_KEY, { watch, setValue }, { storage, include: ['bar'] })
 
       return (
         <form data-testid='form' onSubmit={handleSubmit(() => null)}>
-          <input name='foo' defaultValue='bar' ref={register} />
-          <input name='baz' defaultValue='qux' ref={register} />
+          <input name='foo' defaultValue='fooValue' ref={register} />
+          <input name='bar' defaultValue='barValue' ref={register} />
+          <input name='baz' defaultValue='bazValue' ref={register} />
           <input type='submit' />
         </form>
       )
@@ -84,7 +87,7 @@ describe('Form persist hook', async () => {
 
     expect(storage.getItem).toHaveBeenCalled()
     expect(storage.setItem).toHaveBeenCalled()
-    expect(storage.getItem(STORAGE_KEY)).toEqual({ foo: 'bar' })
+    expect(storage.getItem(STORAGE_KEY)).toEqual({ bar: 'barValue' })
   })
 
   test('should not persist excluded fields in storage', async () => {
@@ -97,8 +100,9 @@ describe('Form persist hook', async () => {
 
       return (
         <form data-testid='form' onSubmit={handleSubmit(() => null)}>
-          <input name='foo' defaultValue='bar' ref={register} />
-          <input name='baz' defaultValue='qux' ref={register} />
+          <input name='foo' defaultValue='fooValue' ref={register} />
+          <input name='bar' defaultValue='barValue' ref={register} />
+          <input name='baz' defaultValue='bazValue' ref={register} />
           <input type='submit' />
         </form>
       )
@@ -113,6 +117,9 @@ describe('Form persist hook', async () => {
 
     expect(storage.getItem).toHaveBeenCalled()
     expect(storage.setItem).toHaveBeenCalled()
-    expect(storage.getItem(STORAGE_KEY)).toEqual({ foo: 'bar' })
+    expect(storage.getItem(STORAGE_KEY)).toEqual({
+      foo: 'fooValue',
+      bar: 'barValue'
+    })
   })
 })
