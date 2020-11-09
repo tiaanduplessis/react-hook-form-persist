@@ -27,27 +27,26 @@ import useFormPersist from 'react-hook-form-persist'
 function App() {
   const { register, handleSubmit, watch, errors, setValue } = useForm();
 
-  useFormPersist("foo", {watch, setValue}, {
+  useFormPersist("storageKey", {watch, setValue}, {
     storage: window.localStorage, // default window.sessionStorage
-    exclude: ['foo']
+    exclude: ['baz']
   });
-
 
   const onSubmit = data => {
     console.log(data);
   };
 
-
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <input name="example" defaultValue="test" ref={register} />
-
-      <input name="exampleRequired" ref={register({ required: true })} />
-      {errors.exampleRequired && <span>This field is required</span>}
-
+      <label htmlFor="foo">foo:</label>
       <input name="foo" defaultValue="bar" ref={register} />
 
-      <input name="bar" defaultValue="foo" ref={register} />
+      <label htmlFor="required">required:</label>
+      <input name="required" ref={register({ required: true })} />
+      {errors.required && <span>This field is required</span>}
+
+      <label htmlFor="baz">baz:</label>
+      <input name="baz" defaultValue="excludedValue" ref={register} />
 
       <input type="submit" />
     </form>
