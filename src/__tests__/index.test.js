@@ -25,7 +25,7 @@ const storageFactory = () => ({
 
 const STORAGE_KEY = 'storageKey'
 
-describe('Form persist hook', async () => {
+describe('Form persist hook', () => {
   test('should persist all form fields in storage', async () => {
     const storage = storageFactory()
 
