@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
 const useFormPersist = (
-  name,
+  storageKey,
   { watch, setValue },
   {
     storage = window.sessionStorage,
@@ -10,34 +10,43 @@ const useFormPersist = (
     onDataRestored
   } = {}
 ) => {
-  const values = watch(include)
+  const watchedValues = watch(include)
+
+  const values = exclude.length
+    ? Object.entries(watchedValues)
+      .filter(([key]) => !exclude.includes(key))
+      .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
+    : Object.assign({}, watchedValues)
 
   useEffect(() => {
-    const str = storage.getItem(name)
-    if (str) {
-      const values = JSON.parse(str)
-      const dataRestored = {}
+    const storageItem = storage.getItem(storageKey)
 
-      Object.keys(values).forEach(key => {
-        const shouldSet = !exclude.includes(key)
-        if (shouldSet) {
-          dataRestored[key] = values[key]
-          setValue(key, values[key])
-        }
-      })
+    if (storageItem === null) return
 
-      if (onDataRestored) {
-        onDataRestored(dataRestored)
-      }
+    const values = JSON.parse(storageItem)
+
+    const dataRestored = {}
+    Object.keys(values).forEach((key) => {
+      dataRestored[key] = values[key]
+      setValue(key, values[key])
+    })
+
+    if (onDataRestored) {
+      onDataRestored(dataRestored)
     }
-  }, [name])
+  }, [
+    storage,
+    storageKey,
+    onDataRestored,
+    setValue
+  ])
 
   useEffect(() => {
-    storage.setItem(name, JSON.stringify(values))
+    storage.setItem(storageKey, JSON.stringify(values))
   })
 
   return {
-    clear: () => storage.removeItem(name)
+    clear: () => storage.removeItem(storageKey)
   }
 }
 
