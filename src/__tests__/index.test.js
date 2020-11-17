@@ -1,18 +1,18 @@
 import React from 'react'
 import { act, render, fireEvent, cleanup } from '@testing-library/react'
 import { useForm } from 'react-hook-form'
-import useFormPersist from '../'
 import MutationObserver from 'mutation-observer'
-
 import 'babel-polyfill'
+
+import useFormPersist from '../'
 
 global.MutationObserver = MutationObserver
 
-afterEach(cleanup)
+const STORAGE_KEY = 'storageKey'
 
 const wait = () => new Promise(resolve => setTimeout(resolve, 1000))
 
-const storageFactory = () => ({
+const storageMock = () => ({
   memory: {},
   getItem: jest.fn(function (key) {
     const value = this.memory[key]
@@ -23,11 +23,26 @@ const storageFactory = () => ({
   })
 })
 
-const STORAGE_KEY = 'storageKey'
+const FormComponentMock = ({ register, handleSubmit }) => (
+  <form data-testid='form' onSubmit={handleSubmit(() => null)}>
+    <label htmlFor='fooInput'>foo:</label>
+    <input id='fooInput' name='foo' defaultValue='fooValue' ref={register} />
+
+    <label htmlFor='barInput'>bar:</label>
+    <input id='barInput' name='bar' defaultValue='barValue' ref={register} />
+
+    <label htmlFor='bazInput'>baz:</label>
+    <input id='bazInput' name='baz' defaultValue='bazValue' ref={register} />
+
+    <input type='submit' />
+  </form>
+)
+
+afterEach(cleanup)
 
 describe('Form persist hook', () => {
   test('should persist all form fields in storage', async () => {
-    const storage = storageFactory()
+    const storage = storageMock()
 
     function Form () {
       const { register, handleSubmit, watch, setValue } = useForm()
@@ -35,12 +50,10 @@ describe('Form persist hook', () => {
       useFormPersist(STORAGE_KEY, { watch, setValue }, { storage })
 
       return (
-        <form data-testid='form' onSubmit={handleSubmit(() => null)}>
-          <input name='foo' defaultValue='fooValue' ref={register} />
-          <input name='bar' defaultValue='barValue' ref={register} />
-          <input name='baz' defaultValue='bazValue' ref={register} />
-          <input type='submit' />
-        </form>
+        <FormComponentMock
+          register={register}
+          handleSubmit={handleSubmit}
+        />
       )
     }
 
@@ -61,7 +74,7 @@ describe('Form persist hook', () => {
   })
 
   test('should persist only specified fields in storage', async () => {
-    const storage = storageFactory()
+    const storage = storageMock()
 
     function Form () {
       const { register, handleSubmit, watch, setValue } = useForm()
@@ -69,12 +82,10 @@ describe('Form persist hook', () => {
       useFormPersist(STORAGE_KEY, { watch, setValue }, { storage, include: ['bar'] })
 
       return (
-        <form data-testid='form' onSubmit={handleSubmit(() => null)}>
-          <input name='foo' defaultValue='fooValue' ref={register} />
-          <input name='bar' defaultValue='barValue' ref={register} />
-          <input name='baz' defaultValue='bazValue' ref={register} />
-          <input type='submit' />
-        </form>
+        <FormComponentMock
+          register={register}
+          handleSubmit={handleSubmit}
+        />
       )
     }
 
@@ -91,7 +102,7 @@ describe('Form persist hook', () => {
   })
 
   test('should not persist excluded fields in storage', async () => {
-    const storage = storageFactory()
+    const storage = storageMock()
 
     function Form () {
       const { register, handleSubmit, watch, setValue } = useForm()
@@ -99,12 +110,10 @@ describe('Form persist hook', () => {
       useFormPersist(STORAGE_KEY, { watch, setValue }, { storage, exclude: ['baz'] })
 
       return (
-        <form data-testid='form' onSubmit={handleSubmit(() => null)}>
-          <input name='foo' defaultValue='fooValue' ref={register} />
-          <input name='bar' defaultValue='barValue' ref={register} />
-          <input name='baz' defaultValue='bazValue' ref={register} />
-          <input type='submit' />
-        </form>
+        <FormComponentMock
+          register={register}
+          handleSubmit={handleSubmit}
+        />
       )
     }
 
