@@ -25,14 +25,17 @@ const storageMock = () => ({
 
 const FormComponentMock = ({ register, handleSubmit }) => (
   <form data-testid='form' onSubmit={handleSubmit(() => null)}>
-    <label htmlFor='fooInput'>foo:</label>
-    <input id='fooInput' name='foo' defaultValue='fooValue' ref={register} />
+    <label >foo:
+      <input name='foo' defaultValue='fooValue' ref={register} />
+    </label>
 
-    <label htmlFor='barInput'>bar:</label>
-    <input id='barInput' name='bar' defaultValue='barValue' ref={register} />
+    <label>bar:
+      <input name='bar' defaultValue='barValue' ref={register} />
+    </label>
 
-    <label htmlFor='bazInput'>baz:</label>
-    <input id='bazInput' name='baz' defaultValue='bazValue' ref={register} />
+    <label>baz:
+      <input name='baz' defaultValue='bazValue' ref={register} />
+    </label>
 
     <input type='submit' />
   </form>
