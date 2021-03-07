@@ -7,7 +7,8 @@ const useFormPersist = (
     storage = window.sessionStorage,
     exclude = [],
     include,
-    onDataRestored
+    onDataRestored,
+    dirty
   } = {}
 ) => {
   const values = watch(include)
@@ -22,7 +23,7 @@ const useFormPersist = (
         const shouldSet = !exclude.includes(key)
         if (shouldSet) {
           dataRestored[key] = values[key]
-          setValue(key, values[key])
+          setValue(key, values[key], { shouldDirty: dirty })
         }
       })
 
