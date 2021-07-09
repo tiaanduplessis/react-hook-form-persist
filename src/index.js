@@ -4,16 +4,17 @@ const useFormPersist = (
   name,
   { watch, setValue },
   {
-    storage = window.sessionStorage,
+    storage,
     exclude = [],
     include,
     onDataRestored
   } = {}
 ) => {
   const values = watch(include)
+  const getStorage = () => storage || window.sessionStorage;
 
   useEffect(() => {
-    const str = storage.getItem(name)
+    const str = getStorage().getItem(name)
     if (str) {
       const values = JSON.parse(str)
       const dataRestored = {}
@@ -33,11 +34,11 @@ const useFormPersist = (
   }, [name])
 
   useEffect(() => {
-    storage.setItem(name, JSON.stringify(values))
+    getStorage().setItem(name, JSON.stringify(values))
   })
 
   return {
-    clear: () => storage.removeItem(name)
+    clear: () => getStorage().removeItem(name)
   }
 }
 
