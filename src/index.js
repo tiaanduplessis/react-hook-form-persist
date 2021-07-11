@@ -13,7 +13,7 @@ const useFormPersist = (
   } = {}
 ) => {
   const values = watch(include)
-  const getStorage = () => storage || window.sessionStorage;
+  const getStorage = () => storage || window.sessionStorage
 
   useEffect(() => {
     const str = getStorage().getItem(name)
