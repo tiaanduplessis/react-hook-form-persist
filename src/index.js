@@ -7,7 +7,9 @@ const useFormPersist = (
     storage,
     exclude = [],
     include,
-    onDataRestored
+    onDataRestored,
+    validate = false,
+    dirty = false
   } = {}
 ) => {
   const values = watch(include)
@@ -23,7 +25,7 @@ const useFormPersist = (
         const shouldSet = !exclude.includes(key)
         if (shouldSet) {
           dataRestored[key] = values[key]
-          setValue(key, values[key])
+          setValue(key, values[key], { shouldValidate: validate, shouldDirty: dirty })
         }
       })
 
