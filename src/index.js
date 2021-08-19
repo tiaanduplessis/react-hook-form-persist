@@ -36,7 +36,9 @@ const useFormPersist = (
   }, [name])
 
   useEffect(() => {
-    getStorage().setItem(name, JSON.stringify(values))
+    if (Object.entries(values).length) {
+      getStorage().setItem(name, JSON.stringify(values))
+    }
   })
 
   return {
