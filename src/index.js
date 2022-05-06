@@ -9,7 +9,8 @@ const useFormPersist = (
     include,
     onDataRestored,
     validate = false,
-    dirty = false
+    dirty = false,
+    timeout = null
   } = {}
 ) => {
   const values = watch(include)
@@ -18,14 +19,22 @@ const useFormPersist = (
   useEffect(() => {
     const str = getStorage().getItem(name)
     if (str) {
-      const values = JSON.parse(str)
+      const { _timestamp = null, ...values } = JSON.parse(str)
       const dataRestored = {}
+      const currTimestamp = Date.now()
+      if (timeout && currTimestamp - _timestamp > timeout) {
+        getStorage().removeItem(name)
+        return
+      }
 
-      Object.keys(values).forEach(key => {
+      Object.keys(values).forEach((key) => {
         const shouldSet = !exclude.includes(key)
         if (shouldSet) {
           dataRestored[key] = values[key]
-          setValue(key, values[key], { shouldValidate: validate, shouldDirty: dirty })
+          setValue(key, values[key], {
+            shouldValidate: validate,
+            shouldDirty: dirty
+          })
         }
       })
 
@@ -36,7 +45,8 @@ const useFormPersist = (
   }, [name])
 
   useEffect(() => {
-    getStorage().setItem(name, JSON.stringify(values))
+    const _timestamp = Date.now()
+    getStorage().setItem(name, JSON.stringify({ ...values, _timestamp }))
   })
 
   return {
