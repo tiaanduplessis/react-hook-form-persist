@@ -11,7 +11,6 @@ const useFormPersist = (
     validate = false,
     dirty = false,
     timeout = null,
-    DEBUG = false
   } = {}
 ) => {
   const values = watch(include)
@@ -27,7 +26,6 @@ const useFormPersist = (
       const dataRestored = {}
       const currTimestamp = Date.now()
       if (timeout && currTimestamp - _timestamp > timeout) {
-        if(DEBUG) console.log("Session Timed out")
         onTimeout && onTimeout();
         clearStorage();
         return
