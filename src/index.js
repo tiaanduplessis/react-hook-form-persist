@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 
 const useFormPersist = (
   name,
-  { watch, setValue },
+  { watch, setValue, onTimeout },
   {
     storage,
     exclude = [],
@@ -16,6 +16,9 @@ const useFormPersist = (
 ) => {
   const values = watch(include)
   const getStorage = () => storage || window.sessionStorage
+  const clearStorage = () => {
+    getStorage().removeItem(name)
+  }
 
   useEffect(() => {
     const str = getStorage().getItem(name)
@@ -25,7 +28,8 @@ const useFormPersist = (
       const currTimestamp = Date.now()
       if (timeout && currTimestamp - _timestamp > timeout) {
         if(DEBUG) console.log("Session Timed out")
-        getStorage().removeItem(name)
+        onTimeout && onTimeout();
+        clearStorage();
         return
       }
 
