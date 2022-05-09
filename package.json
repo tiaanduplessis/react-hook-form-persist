@@ -53,7 +53,7 @@
     "standard": "14.3.4"
   },
   "peerDependencies": {
-    "react": "^16|^17",
+    "react": "^16||^17",
     "react-hook-form": "^6"
   },
   "standard": {
