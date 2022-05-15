@@ -1,6 +1,6 @@
 {
   "name": "react-hook-form-persist",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Persist and populate react-hook-form form using storage of your choice",
   "main": "dist/react-hook-form-persist.js",
   "source": "src/index.js",
@@ -40,21 +40,21 @@
     "@babel/plugin-proposal-class-properties": "7.7.0",
     "@babel/preset-env": "7.7.1",
     "@babel/preset-react": "7.7.0",
+    "@testing-library/react": "^10.3.0",
     "babel-eslint": "10.0.1",
     "babel-jest": "24.9.0",
     "babel-polyfill": "6.26.0",
     "jest": "24.9.0",
     "microbundle": "^0.12.3",
-    "@testing-library/react": "^10.3.0",
     "mutation-observer": "1.0.3",
-    "react": "16.8.6",
-    "react-dom": "16.8.6",
+    "react": "17.0.0",
+    "react-dom": "17.0.0",
     "react-hook-form": "6.0.6",
     "standard": "14.3.4"
   },
   "peerDependencies": {
-    "react": "^16",
-    "react-hook-form": "^6"
+    "react": "^16||^17",
+    "react-hook-form": "^6||^7"
   },
   "standard": {
     "parser": "babel-eslint",

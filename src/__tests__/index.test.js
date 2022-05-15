@@ -25,7 +25,7 @@ const storageMock = () => ({
 
 const FormComponentMock = ({ register, handleSubmit }) => (
   <form data-testid='form' onSubmit={handleSubmit(() => null)}>
-    <label >foo:
+    <label>foo:
       <input name='foo' defaultValue='fooValue' ref={register} />
     </label>
 
@@ -133,5 +133,92 @@ describe('Form persist hook', () => {
       foo: 'fooValue',
       bar: 'barValue'
     })
+  })
+
+  test('should have timeout for storage of config option is provided', async () => {
+    const mockTime = 10
+    const timeout = 1000 * 100
+    const mockTimePreTimeout = mockTime + timeout / 2
+
+    const internal = {
+      val: {
+        foo: 'foo', _timestamp: mockTime
+      }
+    }
+
+    const storage = {
+      getItem: jest.fn(() => JSON.stringify(internal.val)),
+      setItem: jest.fn((key, val) => {
+        internal.key = key
+        internal.val = JSON.parse(val)
+      }),
+      removeItem: jest.fn(() => {})
+    }
+
+    function Form () {
+      const { register, handleSubmit, watch, setValue } = useForm()
+
+      useFormPersist('foo', { watch, setValue }, { storage, timeout })
+
+      const onSubmit = (data) => {
+        console.log(data)
+      }
+
+      return (
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <input name='bar' defaultValue='foo' ref={register} />
+          <input type='submit' />
+        </form>
+      )
+    }
+
+    Date.now = jest.fn(() => mockTimePreTimeout)
+
+    render(<Form />)
+    await wait()
+    expect(internal.val._timestamp).toBe(mockTimePreTimeout)
+  })
+
+  test('should remove expired items from storage', async () => {
+    const mockTime = 10
+    const timeout = 1000 * 100
+    const mockTimePostTimeout = mockTime + timeout * 2
+
+    const internal = {
+      val: {
+        foo: 'foo', _timestamp: mockTime
+      }
+    }
+
+    const storage = {
+      getItem: jest.fn(() => JSON.stringify(internal.val)),
+      setItem: jest.fn((key, val) => {
+        internal.key = key
+        internal.val = JSON.parse(val)
+      }),
+      removeItem: jest.fn(() => {})
+    }
+
+    function Form () {
+      const { register, handleSubmit, watch, setValue } = useForm()
+
+      useFormPersist('foo', { watch, setValue }, { storage, timeout })
+
+      const onSubmit = (data) => {
+        console.log(data)
+      }
+
+      return (
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <input name='bar' defaultValue='foo' ref={register} />
+          <input type='submit' />
+        </form>
+      )
+    }
+
+    Date.now = jest.fn(() => mockTimePostTimeout)
+    render(<Form />)
+    await wait()
+    expect(storage.removeItem).toHaveBeenCalled()
   })
 })

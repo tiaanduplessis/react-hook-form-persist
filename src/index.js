@@ -1,52 +1,76 @@
 import { useEffect } from 'react'
 
 const useFormPersist = (
-  storageKey,
-  { watch, setValue },
+  name,
+  { watch, setValue, onTimeout },
   {
-    storage = window.sessionStorage,
+    storage,
     exclude = [],
     include,
-    onDataRestored
+    onDataRestored,
+    validate = false,
+    dirty = false,
+    timeout = null
   } = {}
 ) => {
   const watchedValues = watch(include)
 
-  const values = exclude.length
-    ? Object.entries(watchedValues)
-      .filter(([key]) => !exclude.includes(key))
-      .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
-    : Object.assign({}, watchedValues)
+  const getStorage = () => storage || window.sessionStorage
+
+  const clearStorage = () => getStorage().removeItem(name)
 
   useEffect(() => {
-    const storageItem = storage.getItem(storageKey)
+    const str = getStorage().getItem(name)
+    if (str) {
+      const { _timestamp = null, ...values } = JSON.parse(str)
+      const dataRestored = {}
+      const currTimestamp = Date.now()
 
-    if (storageItem === null) return
+      if (timeout && currTimestamp - _timestamp > timeout) {
+        onTimeout && onTimeout()
+        clearStorage()
+        return
+      }
 
-    const values = JSON.parse(storageItem)
+      Object.keys(values).forEach((key) => {
+        const shouldSet = !exclude.includes(key)
+        if (shouldSet) {
+          dataRestored[key] = values[key]
+          setValue(key, values[key], {
+            shouldValidate: validate,
+            shouldDirty: dirty
+          })
+        }
+      })
 
-    const dataRestored = {}
-    Object.keys(values).forEach((key) => {
-      dataRestored[key] = values[key]
-      setValue(key, values[key])
-    })
-
-    if (onDataRestored) {
-      onDataRestored(dataRestored)
+      if (onDataRestored) {
+        onDataRestored(dataRestored)
+      }
     }
   }, [
     storage,
-    storageKey,
+    name,
     onDataRestored,
     setValue
   ])
 
   useEffect(() => {
-    storage.setItem(storageKey, JSON.stringify(values))
-  })
+    const values = exclude.length
+      ? Object.entries(watchedValues)
+        .filter(([key]) => !exclude.includes(key))
+        .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
+      : Object.assign({}, watchedValues)
+
+    if (Object.entries(values).length) {
+      if (timeout) {
+        values._timestamp = Date.now()
+      }
+      getStorage().setItem(name, JSON.stringify(values))
+    }
+  }, [watchedValues, timeout])
 
   return {
-    clear: () => storage.removeItem(storageKey)
+    clear: () => getStorage().removeItem(name)
   }
 }
 
