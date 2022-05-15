@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import {SetFieldValue} from 'react-hook-form'
+import { SetFieldValue } from 'react-hook-form'
 
 export interface FormPersistConfig {
   storage?: Storage;
@@ -38,7 +38,7 @@ const useFormPersist = (
 
     if (str) {
       const { _timestamp = null, ...values } = JSON.parse(str)
-      const dataRestored: {[key: string]: any} = {}
+      const dataRestored: { [key: string]: any } = {}
       const currTimestamp = Date.now()
 
       if (timeout && (currTimestamp - _timestamp) > timeout) {

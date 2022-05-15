@@ -2,20 +2,25 @@
   "name": "react-hook-form-persist",
   "version": "2.1.0",
   "description": "Persist and populate react-hook-form form using storage of your choice",
-  "main": "dist/react-hook-form-persist.js",
-  "source": "src/index.js",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "vitest",
     "coverage": "vitest run --coverage",
-    "lint": "ts-standard --fix"
+    "format": "pretty-quick --ignore-path .gitignore",
+    "build": "rm -rf dist && tsup src/index.tsx --format cjs,esm --dts --target node16",
+    "prepublishOnly": "npm run build",
+    "types:check": "tsc --noEmit",
+    "size": "dist-size"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tiaanduplessis/react-hook-form-persist.git"
   },
-  "files": [
-    "dist"
-  ],
   "keywords": [
     "react-hook-form",
     "persist",
@@ -31,23 +36,24 @@
   },
   "homepage": "https://github.com/tiaanduplessis/react-hook-form-persist#readme",
   "devDependencies": {
+    "@testing-library/dom": "^8.13.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.2.0",
     "@testing-library/user-event": "^14.2.0",
     "@types/testing-library__jest-dom": "^5.14.3",
+    "dist-size": "^0.4.0",
     "jsdom": "^19.0.0",
+    "prettier": "^2.6.2",
+    "pretty-quick": "^3.1.3",
     "react": "18.1.0",
     "react-dom": "18.1.0",
     "react-hook-form": "7.31.1",
-    "ts-standard": "^11.0.0",
+    "tsup": "^5.12.7",
     "typescript": "^4.6.4",
     "vitest": "^0.12.6"
   },
   "peerDependencies": {
     "react": ">= 16.3",
     "react-hook-form": ">= 6"
-  },
-  "ts-standard": {
-    "project": "./tsconfig.json"
   }
 }
