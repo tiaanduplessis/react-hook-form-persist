@@ -53,8 +53,8 @@
     "standard": "14.3.4"
   },
   "peerDependencies": {
-    "react": "^17",
-    "react-hook-form": "^7"
+    "react": "^16||^17",
+    "react-hook-form": "^6||^7"
   },
   "standard": {
     "parser": "babel-eslint",
