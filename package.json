@@ -1,6 +1,6 @@
 {
   "name": "react-hook-form-persist",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Persist and populate react-hook-form form using storage of your choice",
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
