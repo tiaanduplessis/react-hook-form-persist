@@ -47,8 +47,8 @@
     "jest": "24.9.0",
     "microbundle": "^0.12.3",
     "mutation-observer": "1.0.3",
-    "react": "16.8.6",
-    "react-dom": "16.8.6",
+    "react": "17.0.0",
+    "react-dom": "17.0.0",
     "react-hook-form": "6.0.6",
     "standard": "14.3.4"
   },

@@ -49,8 +49,10 @@ const useFormPersist = (
   }, [name])
 
   useEffect(() => {
-    const _timestamp = Date.now()
-    getStorage().setItem(name, JSON.stringify({ ...values, _timestamp }))
+    if (Object.entries(values).length) {
+      const _timestamp = Date.now()
+      getStorage().setItem(name, JSON.stringify({ ...values, _timestamp }))
+    }
   })
 
   return {
