@@ -10,14 +10,14 @@ const useFormPersist = (
     onDataRestored,
     validate = false,
     dirty = false,
-    timeout = null,
+    timeout = null
   } = {}
 ) => {
-  const values = watch(include)
+  const watchedValues = watch(include)
+
   const getStorage = () => storage || window.sessionStorage
-  const clearStorage = () => {
-    getStorage().removeItem(name)
-  }
+
+  const clearStorage = () => getStorage().removeItem(name)
 
   useEffect(() => {
     const str = getStorage().getItem(name)
@@ -25,9 +25,10 @@ const useFormPersist = (
       const { _timestamp = null, ...values } = JSON.parse(str)
       const dataRestored = {}
       const currTimestamp = Date.now()
+
       if (timeout && currTimestamp - _timestamp > timeout) {
-        onTimeout && onTimeout();
-        clearStorage();
+        onTimeout && onTimeout()
+        clearStorage()
         return
       }
 
@@ -46,14 +47,27 @@ const useFormPersist = (
         onDataRestored(dataRestored)
       }
     }
-  }, [name])
+  }, [
+    storage,
+    name,
+    onDataRestored,
+    setValue
+  ])
 
   useEffect(() => {
+    const values = exclude.length
+      ? Object.entries(watchedValues)
+        .filter(([key]) => !exclude.includes(key))
+        .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
+      : Object.assign({}, watchedValues)
+
     if (Object.entries(values).length) {
-      const _timestamp = Date.now()
-      getStorage().setItem(name, JSON.stringify({ ...values, _timestamp }))
+      if (timeout) {
+        values._timestamp = Date.now()
+      }
+      getStorage().setItem(name, JSON.stringify(values))
     }
-  })
+  }, [watchedValues, timeout])
 
   return {
     clear: () => getStorage().removeItem(name)

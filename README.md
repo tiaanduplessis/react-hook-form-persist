@@ -20,34 +20,36 @@
 ```js
 import React from "react";
 import ReactDOM from "react-dom";
-import useForm from "react-hook-form"
+import { useForm } from "react-hook-form";
 
 import useFormPersist from 'react-hook-form-persist'
 
 function App() {
   const { register, handleSubmit, watch, errors, setValue } = useForm();
 
-  useFormPersist("foo", {watch, setValue}, {
+  useFormPersist("storageKey", {watch, setValue}, {
     storage: window.localStorage, // default window.sessionStorage
-    exclude: ['foo']
+    exclude: ['baz']
   });
-
 
   const onSubmit = data => {
     console.log(data);
   };
 
-
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <input name="example" defaultValue="test" ref={register} />
+      <label>foo:
+        <input name="foo" ref={register} />
+      </label>
 
-      <input name="exampleRequired" ref={register({ required: true })} />
-      {errors.exampleRequired && <span>This field is required</span>}
+      <label>bar (required):
+        <input name="bar" ref={register({ required: true })} />
+      </label>
+      {errors.required && <span>This field is required</span>}
 
-      <input name="foo" defaultValue="bar" ref={register} />
-
-      <input name="bar" defaultValue="foo" ref={register} />
+      <label>baz (excluded):
+        <input name="baz" ref={register} />
+      </label>
 
       <input type="submit" />
     </form>
