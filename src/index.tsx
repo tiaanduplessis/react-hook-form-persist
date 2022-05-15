@@ -1,19 +1,33 @@
 import { useEffect } from 'react'
+import {SetFieldValue} from 'react-hook-form'
+
+export interface FormPersistConfig {
+  storage?: Storage;
+  watch: (names?: string | string[]) => any;
+  setValue: SetFieldValue<any>;
+  exclude?: string[];
+  onDataRestored?: (data: any) => void;
+  validate?: boolean;
+  dirty?: boolean;
+  onTimeout?: () => void;
+  timeout?: number;
+}
 
 const useFormPersist = (
-  name,
-  { watch, setValue, onTimeout },
+  name: string,
   {
     storage,
+    watch,
+    setValue,
     exclude = [],
-    include,
     onDataRestored,
     validate = false,
     dirty = false,
-    timeout = null
-  } = {}
+    onTimeout,
+    timeout
+  }: FormPersistConfig
 ) => {
-  const watchedValues = watch(include)
+  const watchedValues = watch()
 
   const getStorage = () => storage || window.sessionStorage
 
@@ -21,12 +35,13 @@ const useFormPersist = (
 
   useEffect(() => {
     const str = getStorage().getItem(name)
+
     if (str) {
       const { _timestamp = null, ...values } = JSON.parse(str)
-      const dataRestored = {}
+      const dataRestored: {[key: string]: any} = {}
       const currTimestamp = Date.now()
 
-      if (timeout && currTimestamp - _timestamp > timeout) {
+      if (timeout && (currTimestamp - _timestamp) > timeout) {
         onTimeout && onTimeout()
         clearStorage()
         return
@@ -55,6 +70,7 @@ const useFormPersist = (
   ])
 
   useEffect(() => {
+
     const values = exclude.length
       ? Object.entries(watchedValues)
         .filter(([key]) => !exclude.includes(key))
@@ -62,7 +78,7 @@ const useFormPersist = (
       : Object.assign({}, watchedValues)
 
     if (Object.entries(values).length) {
-      if (timeout) {
+      if (timeout !== undefined) {
         values._timestamp = Date.now()
       }
       getStorage().setItem(name, JSON.stringify(values))
