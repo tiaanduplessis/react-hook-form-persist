@@ -9,6 +9,7 @@ export interface FormPersistConfig {
   onDataRestored?: (data: any) => void;
   validate?: boolean;
   dirty?: boolean;
+  touch?: boolean;
   onTimeout?: () => void;
   timeout?: number;
 }
@@ -23,6 +24,7 @@ const useFormPersist = (
     onDataRestored,
     validate = false,
     dirty = false,
+    touch = false,
     onTimeout,
     timeout
   }: FormPersistConfig
@@ -53,7 +55,8 @@ const useFormPersist = (
           dataRestored[key] = values[key]
           setValue(key, values[key], {
             shouldValidate: validate,
-            shouldDirty: dirty
+            shouldDirty: dirty,
+            shouldTouch: touch
           })
         }
       })
