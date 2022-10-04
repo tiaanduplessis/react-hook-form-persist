@@ -64,6 +64,8 @@ const useFormPersist = (
       if (onDataRestored) {
         onDataRestored(dataRestored)
       }
+
+      return () => getStorage().setItem(name, JSON.stringify(dataRestored));
     }
   }, [
     storage,
