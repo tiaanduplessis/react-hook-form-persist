@@ -13,10 +13,10 @@ beforeEach(() => {
 })
 
 
-const Form = ({ onSubmit = () => { }, config = {} }: { onSubmit?: any, config?: Omit<FormPersistConfig, 'watch' | 'setValue'> }) => {
+const Form = ({ onSubmit = () => {}, config = {}, name = STORAGE_KEY }: { onSubmit?: any, config?: Omit<FormPersistConfig, 'watch' | 'setValue'>, name?: string | null }) => {
   const { register, handleSubmit, watch, setValue } = useForm()
 
-  useFormPersist(STORAGE_KEY, { watch, setValue, ...config })
+  useFormPersist(name, { watch, setValue, ...config })
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
@@ -52,6 +52,16 @@ describe('react-hook-form-persist', () => {
       bar: '',
       baz: ''
     })
+  })
+
+  test('should not persist when no name is present', async () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem')
+
+    render(<Form name={null} />)
+
+    await userEvent.type(screen.getByLabelText('foo:'), 'foo')
+
+    expect(spy).not.toHaveBeenCalled()
   })
 
   test('should retrieve stored fields', async () => {
