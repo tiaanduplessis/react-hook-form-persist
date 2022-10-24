@@ -15,7 +15,7 @@ export interface FormPersistConfig {
 }
 
 const useFormPersist = (
-  name: string,
+  name: string | null,
   {
     storage,
     watch,
@@ -33,9 +33,11 @@ const useFormPersist = (
 
   const getStorage = () => storage || window.sessionStorage
 
-  const clearStorage = () => getStorage().removeItem(name)
+  const clearStorage = (name: string | null) => getStorage().removeItem(name)
 
   useEffect(() => {
+    if (!name) return
+
     const str = getStorage().getItem(name)
 
     if (str) {
@@ -45,7 +47,7 @@ const useFormPersist = (
 
       if (timeout && (currTimestamp - _timestamp) > timeout) {
         onTimeout && onTimeout()
-        clearStorage()
+        clearStorage(name)
         return
       }
 
@@ -73,6 +75,7 @@ const useFormPersist = (
   ])
 
   useEffect(() => {
+    if (!name) return
 
     const values = exclude.length
       ? Object.entries(watchedValues)
@@ -88,8 +91,10 @@ const useFormPersist = (
     }
   }, [watchedValues, timeout])
 
+  if (!name) return
+
   return {
-    clear: () => getStorage().removeItem(name)
+    clear: () => clearStorage(name)
   }
 }
 
