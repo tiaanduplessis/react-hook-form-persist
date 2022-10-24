@@ -33,7 +33,7 @@ const useFormPersist = (
 
   const getStorage = () => storage || window.sessionStorage
 
-  const clearStorage = (name: string | null) => getStorage().removeItem(name)
+  const clearStorage = (name: string | null) => name && getStorage().removeItem(name)
 
   useEffect(() => {
     if (!name) return
