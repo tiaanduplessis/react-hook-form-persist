@@ -94,7 +94,7 @@ const useFormPersist = (
         .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
       : Object.assign({}, watchedValues)
 
-    if (Object.entries(values).length ) {
+    if (Object.entries(values).length) {
       if (timeout !== undefined) {
         values._timestamp = Date.now()
       }
