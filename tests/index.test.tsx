@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { StrictMode } from 'react'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { useForm } from 'react-hook-form'
+import { useForm, UseFormProps } from 'react-hook-form'
 import userEvent from '@testing-library/user-event'
 
 import useFormPersist, { FormPersistConfig } from '../src'
@@ -13,8 +13,8 @@ beforeEach(() => {
 })
 
 
-const Form = ({ onSubmit = () => { }, config = {} }: { onSubmit?: any, config?: Omit<FormPersistConfig, 'watch' | 'setValue'> }) => {
-  const { register, handleSubmit, watch, setValue } = useForm()
+const Form = ({ onSubmit = () => { }, config = {}, useFormConfig = {} }: { onSubmit?: any, config?: Omit<FormPersistConfig, 'watch' | 'setValue'>, useFormConfig?: UseFormProps  }) => {
+  const { register, handleSubmit, watch, setValue } = useForm(useFormConfig)
 
   useFormPersist(STORAGE_KEY, { watch, setValue, ...config })
 
@@ -106,6 +106,38 @@ describe('react-hook-form-persist', () => {
 
     expect(clearSpy).toBeCalled()
     expect(JSON.parse(window.sessionStorage.getItem(STORAGE_KEY) || "{}")).toEqual({})
+  })
+
+  test('should apply defaultValues and load persisted changes in React.StrictMode', async() => {
+    const spy = vi.spyOn(Storage.prototype, 'getItem')
+
+    const { unmount, ...rest } = render(
+      <StrictMode>
+        <Form useFormConfig={{
+          defaultValues: {
+            foo: 'Test'
+          }
+        }} 
+        />
+      </StrictMode>
+    )
+
+    await userEvent.type(screen.getByLabelText('foo:'), 'foo')
+    unmount()
+
+    render(
+      <StrictMode>
+        <Form useFormConfig={{
+          defaultValues: {
+            foo: 'Test'
+          }
+        }} 
+        />
+      </StrictMode>
+    )
+
+    expect(spy).toHaveBeenCalled()
+    expect(screen.getByLabelText('foo:')).toHaveValue('Testfoo')
   })
 
 })

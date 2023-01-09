@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { SetFieldValue } from 'react-hook-form'
 
 export interface FormPersistConfig {
@@ -30,27 +30,29 @@ const useFormPersist = (
   }: FormPersistConfig
 ) => {
   const watchedValues = watch()
+  const [localExclude] = useState<string[]>(exclude)
 
-  const getStorage = () => storage || window.sessionStorage
-
-  const clearStorage = () => getStorage().removeItem(name)
+  const getStorage = useCallback(() => storage || window.sessionStorage, [storage])
+  const clearStorage = useCallback(() => getStorage().removeItem(name), [getStorage, name])
+  const onTimeoutCallback = useCallback(() => onTimeout && onTimeout(), [onTimeout])
+  const _mounted = useRef(true)
 
   useEffect(() => {
     const str = getStorage().getItem(name)
 
-    if (str) {
+    if (str && _mounted.current) {
       const { _timestamp = null, ...values } = JSON.parse(str)
       const dataRestored: { [key: string]: any } = {}
       const currTimestamp = Date.now()
 
       if (timeout && (currTimestamp - _timestamp) > timeout) {
-        onTimeout && onTimeout()
+        onTimeoutCallback()
         clearStorage()
         return
       }
 
       Object.keys(values).forEach((key) => {
-        const shouldSet = !exclude.includes(key)
+        const shouldSet = !localExclude.includes(key)
         if (shouldSet) {
           dataRestored[key] = values[key]
           setValue(key, values[key], {
@@ -65,28 +67,50 @@ const useFormPersist = (
         onDataRestored(dataRestored)
       }
     }
+
+    return () => {
+      _mounted.current = false
+    }
   }, [
     storage,
     name,
     onDataRestored,
-    setValue
+    setValue,
+    clearStorage,
+    dirty,
+    localExclude,
+    getStorage,
+    onTimeoutCallback,
+    timeout,
+    touch,
+    validate
   ])
 
   useEffect(() => {
 
-    const values = exclude.length
+    const values = localExclude.length
       ? Object.entries(watchedValues)
-        .filter(([key]) => !exclude.includes(key))
+        .filter(([key]) => !localExclude.includes(key))
         .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
       : Object.assign({}, watchedValues)
 
-    if (Object.entries(values).length) {
+    if (Object.entries(values).length ) {
       if (timeout !== undefined) {
         values._timestamp = Date.now()
       }
       getStorage().setItem(name, JSON.stringify(values))
     }
-  }, [watchedValues, timeout])
+
+    return () => {
+      _mounted.current = false
+    }
+  }, [
+    watchedValues,
+    timeout,
+    localExclude,
+    getStorage,
+    name,
+  ])
 
   return {
     clear: () => getStorage().removeItem(name)
