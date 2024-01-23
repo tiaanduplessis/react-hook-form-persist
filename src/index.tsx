@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { SetFieldValue } from 'react-hook-form'
 
 export interface FormPersistConfig {
@@ -35,6 +35,8 @@ const useFormPersist = (
 
   const clearStorage = () => getStorage().removeItem(name)
 
+  const [isSynchronized, setIsSynchronized] = useState(false)
+
   useEffect(() => {
     const str = getStorage().getItem(name)
 
@@ -65,6 +67,7 @@ const useFormPersist = (
         onDataRestored(dataRestored)
       }
     }
+    setIsSynchronized(true)
   }, [
     storage,
     name,
@@ -89,6 +92,7 @@ const useFormPersist = (
   }, [watchedValues, timeout])
 
   return {
+    isSynchronized,
     clear: () => getStorage().removeItem(name)
   }
 }
