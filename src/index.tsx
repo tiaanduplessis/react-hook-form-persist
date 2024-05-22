@@ -12,6 +12,7 @@ export interface FormPersistConfig {
   touch?: boolean;
   onTimeout?: () => void;
   timeout?: number;
+  defaultValues?: any
 }
 
 const useFormPersist = (
@@ -26,7 +27,8 @@ const useFormPersist = (
     dirty = false,
     touch = false,
     onTimeout,
-    timeout
+    timeout,
+    defaultValues
   }: FormPersistConfig
 ) => {
   const watchedValues = watch()
@@ -37,9 +39,10 @@ const useFormPersist = (
 
   useEffect(() => {
     const str = getStorage().getItem(name)
+    const parsed = str ? JSON.parse(str) : defaultValues
 
-    if (str) {
-      const { _timestamp = null, ...values } = JSON.parse(str)
+    if (parsed) {
+      const { _timestamp = null, ...values } = parsed
       const dataRestored: { [key: string]: any } = {}
       const currTimestamp = Date.now()
 
@@ -69,7 +72,8 @@ const useFormPersist = (
     storage,
     name,
     onDataRestored,
-    setValue
+    setValue,
+    defaultValues
   ])
 
   useEffect(() => {
