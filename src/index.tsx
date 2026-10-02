@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { SetFieldValue } from 'react-hook-form'
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { SetFieldValue } from "react-hook-form";
 
 export interface FormPersistConfig {
   storage?: Storage;
@@ -12,6 +12,8 @@ export interface FormPersistConfig {
   touch?: boolean;
   onTimeout?: () => void;
   timeout?: number;
+  serialize?: (data: Record<string, any>) => string;
+  deserialize?: (serialized: string) => Record<string, any>;
 }
 
 const useFormPersist = (
@@ -26,71 +28,118 @@ const useFormPersist = (
     dirty = false,
     touch = false,
     onTimeout,
-    timeout
+    timeout,
+    serialize = JSON.stringify,
+    deserialize = JSON.parse,
   }: FormPersistConfig
 ) => {
-  const watchedValues = watch()
+  const watchedValues = watch();
+  // Callers commonly pass an inline array. Compare its contents so restoration
+  // does not run again merely because the array has a new identity.
+  const excludeKey = JSON.stringify(exclude);
+  const excludedFields = useMemo(
+    () => JSON.parse(excludeKey) as string[],
+    [excludeKey]
+  );
+  const restoredValues = useRef<{
+    values: any;
+    name: string;
+    storage: Storage;
+    serialize: typeof serialize;
+    excludedFields: string[];
+    timeout: number | undefined;
+  } | null>(null);
 
-  const getStorage = () => storage || window.sessionStorage
+  const getStorage = useCallback(
+    () => storage || window.sessionStorage,
+    [storage]
+  );
 
-  const clearStorage = () => getStorage().removeItem(name)
+  const clearStorage = useCallback(
+    () => getStorage().removeItem(name),
+    [getStorage, name]
+  );
 
   useEffect(() => {
-    const str = getStorage().getItem(name)
+    const str = getStorage().getItem(name);
 
-    if (str) {
-      const { _timestamp = null, ...values } = JSON.parse(str)
-      const dataRestored: { [key: string]: any } = {}
-      const currTimestamp = Date.now()
+    if (str !== null) {
+      const { _timestamp = null, ...values } = deserialize(str);
+      // setValue updates watch on a subsequent render. Never write the stale
+      // render's defaults over restored data, including StrictMode effect replay.
+      restoredValues.current = {
+        values: watchedValues,
+        name,
+        storage: getStorage(),
+        serialize,
+        excludedFields,
+        timeout,
+      };
+      const dataRestored: { [key: string]: any } = {};
+      const currTimestamp = Date.now();
 
-      if (timeout && (currTimestamp - _timestamp) > timeout) {
-        onTimeout && onTimeout()
-        clearStorage()
-        return
+      if (timeout && currTimestamp - _timestamp > timeout) {
+        onTimeout && onTimeout();
+        clearStorage();
+        return;
       }
 
       Object.keys(values).forEach((key) => {
-        const shouldSet = !exclude.includes(key)
+        const shouldSet = !excludedFields.includes(key);
         if (shouldSet) {
-          dataRestored[key] = values[key]
+          dataRestored[key] = values[key];
           setValue(key, values[key], {
             shouldValidate: validate,
             shouldDirty: dirty,
-            shouldTouch: touch
-          })
+            shouldTouch: touch,
+          });
         }
-      })
+      });
+
+      // With nothing to restore, setValue cannot trigger a fresh watch snapshot.
+      // Allow this render to persist defaults and remove previously excluded data.
+      if (!Object.keys(dataRestored).length) {
+        restoredValues.current = null;
+      }
 
       if (onDataRestored) {
-        onDataRestored(dataRestored)
+        onDataRestored(dataRestored);
       }
     }
-  }, [
-    storage,
-    name,
-    onDataRestored,
-    setValue
-  ])
+  }, [clearStorage, deserialize, getStorage, onDataRestored, setValue]);
 
   useEffect(() => {
+    const restored = restoredValues.current;
+    if (
+      restored &&
+      restored.values === watchedValues &&
+      restored.name === name &&
+      restored.storage === getStorage() &&
+      restored.serialize === serialize &&
+      restored.excludedFields === excludedFields &&
+      restored.timeout === timeout
+    ) {
+      return;
+    }
+    restoredValues.current = null;
 
-    const values = exclude.length
+    const values = excludedFields.length
       ? Object.entries(watchedValues)
-        .filter(([key]) => !exclude.includes(key))
-        .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
-      : Object.assign({}, watchedValues)
+          .filter(([key]) => !excludedFields.includes(key))
+          .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
+      : Object.assign({}, watchedValues);
 
     if (Object.entries(values).length) {
       if (timeout !== undefined) {
-        values._timestamp = Date.now()
+        values._timestamp = Date.now();
       }
-      getStorage().setItem(name, JSON.stringify(values))
+      getStorage().setItem(name, serialize(values));
     }
-  }, [watchedValues, timeout])
+  }, [watchedValues, timeout, excludedFields, getStorage, name, serialize]);
 
   return {
-    clear: () => getStorage().removeItem(name)
-  }
-}
+    clear: clearStorage,
+  };
+};
 
-export default useFormPersist
+export default useFormPersist;

@@ -15,7 +15,8 @@
     "build": "rm -rf dist && tsup src/index.tsx --format cjs,esm --dts --target node16",
     "prepublishOnly": "npm run build",
     "types:check": "tsc --noEmit",
-    "size": "dist-size"
+    "size": "dist-size",
+    "lint": "prettier --check src tests"
   },
   "repository": {
     "type": "git",
@@ -50,10 +51,12 @@
     "react-hook-form": "7.31.1",
     "tsup": "^5.12.7",
     "typescript": "^4.6.4",
-    "vitest": "^0.12.6"
+    "vitest": "^0.12.6",
+    "@types/react": "18.0.9"
   },
   "peerDependencies": {
     "react": ">= 16.3",
     "react-hook-form": ">= 6"
-  }
+  },
+  "packageManager": "pnpm@7.33.7"
 }
