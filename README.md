@@ -159,6 +159,28 @@ For all configuration options, please see the [API docs](https://paka.dev/npm/re
 
 Got an idea for a new feature? Found a bug? Contributions are welcome! Please [open up an issue](https://github.com/tiaanduplessis/feature-flip/issues) or [make a pull request](https://makeapullrequest.com/).
 
+### Development
+
+Use a supported Node.js LTS release: Node 22.22.2+ or Node 24.15.0+
+(`.nvmrc` selects Node 24), and pnpm 7.33.7 as pinned in `package.json`.
+These requirements apply to development tools; the library still builds CJS,
+ESM, and declarations with the existing Node 16 output target and peer ranges.
+
+```sh
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm run test --run
+pnpm coverage
+pnpm lint
+pnpm types:check
+pnpm build
+```
+
+The test runner, DOM environment, and coverage provider are pinned in the
+lockfile. The coverage command runs entirely from installed dependencies and
+does not download a provider on demand. The scoped `tsup>esbuild` override
+keeps the build tool on a version patched for
+[GHSA-g7r4-m6w7-qqqr](https://github.com/evanw/esbuild/security/advisories/GHSA-g7r4-m6w7-qqqr).
+
 ## 🪪 License
 
 [MIT © Tiaan du Plessis](./LICENSE)
