@@ -141,6 +141,10 @@ the record before serialization. Preserve that property in both codecs, as the
 example does with `...data`, so expiration still works. `_timestamp` is removed
 before calling `setValue` or `onDataRestored`; do not use it as a form field.
 
+Expired entries are removed without replacing them with unchanged defaults on
+mount or subsequent renders. Changes to non-excluded form values resume saving,
+as do changes to the storage key, storage, serializer, timeout, or exclusions.
+
 Keep codec references stable, for example by defining them outside the component
 or using `useCallback`. Changing `deserialize` causes stored data to be restored
 again; changing `serialize` saves current values with the new serializer. A
