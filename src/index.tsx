@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { SetFieldValue } from "react-hook-form";
+import { createValuesMatcher } from "./values";
 
 export interface FormPersistConfig {
   storage?: Storage;
@@ -49,6 +50,21 @@ const useFormPersist = (
     excludedFields: string[];
     timeout: number | undefined;
   } | null>(null);
+  const expiredValues = useRef<{
+    matches: (values: any) => boolean;
+    name: string;
+    storage: Storage;
+    serialize: typeof serialize;
+    excludedFields: string[];
+    timeout: number | undefined;
+  } | null>(null);
+
+  const getPersistedValues = (values: any) =>
+    excludedFields.length
+      ? Object.entries(values)
+          .filter(([key]) => !excludedFields.includes(key))
+          .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
+      : Object.assign({}, values);
 
   const getStorage = useCallback(
     () => storage || window.sessionStorage,
@@ -79,10 +95,22 @@ const useFormPersist = (
       const currTimestamp = Date.now();
 
       if (timeout && currTimestamp - _timestamp > timeout) {
+        // Read after registration, when RHF knows the input defaults. A later
+        // mount render can return a fresh watch object without any user edits.
+        expiredValues.current = {
+          matches: createValuesMatcher(getPersistedValues(watch())),
+          name,
+          storage: getStorage(),
+          serialize,
+          excludedFields,
+          timeout,
+        };
         onTimeout && onTimeout();
         clearStorage();
         return;
       }
+
+      expiredValues.current = null;
 
       Object.keys(values).forEach((key) => {
         const shouldSet = !excludedFields.includes(key);
@@ -123,11 +151,20 @@ const useFormPersist = (
     }
     restoredValues.current = null;
 
-    const values = excludedFields.length
-      ? Object.entries(watchedValues)
-          .filter(([key]) => !excludedFields.includes(key))
-          .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
-      : Object.assign({}, watchedValues);
+    const values = getPersistedValues(watchedValues);
+    const expired = expiredValues.current;
+    if (
+      expired &&
+      expired.name === name &&
+      expired.storage === getStorage() &&
+      expired.serialize === serialize &&
+      expired.excludedFields === excludedFields &&
+      expired.timeout === timeout &&
+      expired.matches(values)
+    ) {
+      return;
+    }
+    expiredValues.current = null;
 
     if (Object.entries(values).length) {
       if (timeout !== undefined) {
