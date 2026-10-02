@@ -115,7 +115,7 @@ describe("react-hook-form-persist", () => {
     await userEvent.type(screen.getByLabelText("bar:"), "bar");
     await userEvent.type(screen.getByLabelText("baz:"), "baz");
 
-    expect(spy).toBeCalled();
+    expect(spy).toHaveBeenCalled();
     expect(
       JSON.parse(window.sessionStorage.getItem(STORAGE_KEY) || "{}")
     ).toEqual({
@@ -131,7 +131,7 @@ describe("react-hook-form-persist", () => {
 
     render(<Form config={{ timeout: 1000 }} />);
 
-    expect(clearSpy).toBeCalled();
+    expect(clearSpy).toHaveBeenCalled();
     expect(
       JSON.parse(window.sessionStorage.getItem(STORAGE_KEY) || "{}")
     ).toEqual({});

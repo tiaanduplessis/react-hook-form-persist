@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "target": "es2018",
     "module": "esnext",
     "lib": ["esnext", "dom"],
@@ -8,6 +8,6 @@
     "strictNullChecks": true,
     "jsx": "react",
     "allowSyntheticDefaultImports": true,
-    "types": ["@types/testing-library__jest-dom"]
+    "types": ["node", "vitest/globals"]
   }
 }
