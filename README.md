@@ -15,6 +15,7 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
   - [⚙️ Install](#️-install)
   - [📖 Usage](#-usage)
     - [Additional examples](#additional-examples)
+    - [Custom serialization](#custom-serialization)
   - [📚 API](#-api)
   - [💬 Contributing](#-contributing)
   - [🪪 License](#-license)
@@ -100,16 +101,56 @@ Persist all form fields except password:
 useFormPersist('form', {watch, setValue, exclude: ['password']});
 ```
 
-Persist only the email field:
+### Custom serialization
+
+Storage contains strings. By default, the hook uses `JSON.stringify` to save
+values and `JSON.parse` to restore them. Pass `serialize` and `deserialize` to
+support values such as `Date`, `BigInt`, or objects from a date library.
+
+For a form whose `birthday` field is a `Date` and `visits` field is a `BigInt`:
 
 ```js
-useFormPersist('form', {watch, setValue, include: ['email'] });
+// Define codecs outside the component to keep their references stable.
+const serialize = (data) => JSON.stringify({
+  ...data,
+  birthday: data.birthday.toISOString(),
+  visits: data.visits.toString()
+});
+
+const deserialize = (serialized) => {
+  const data = JSON.parse(serialized);
+  return {
+    ...data,
+    birthday: new Date(data.birthday),
+    visits: BigInt(data.visits)
+  };
+};
+
+useFormPersist('form', { watch, setValue, serialize, deserialize });
 ```
 
+Both callbacks are optional and synchronous. `serialize` receives a record of
+form values after `exclude` has been applied and must return a string.
+`deserialize` receives the stored string and must return a record of restored
+values. Exclusions also apply to the returned record, so previously stored
+excluded fields are not restored. Only provide a callback if you need to change
+its corresponding JSON default.
 
+When `timeout` is configured, the hook adds a reserved `_timestamp` property to
+the record before serialization. Preserve that property in both codecs, as the
+example does with `...data`, so expiration still works. `_timestamp` is removed
+before calling `setValue` or `onDataRestored`; do not use it as a form field.
 
+Keep codec references stable, for example by defining them outside the component
+or using `useCallback`. Changing `deserialize` causes stored data to be restored
+again; changing `serialize` saves current values with the new serializer. A
+deserializer that creates new objects on every render can otherwise cause
+repeated restoration.
 
-
+Codec errors, malformed JSON, and storage errors propagate from the hook's
+effects to React. The hook does not silently discard invalid data or fall back
+to defaults. Use an error boundary if you need to handle these errors, and
+validate stored data in your deserializer when your format requires it.
 ## 📚 API
 
 For all configuration options, please see the [API docs](https://paka.dev/npm/react-hook-form-persist).
