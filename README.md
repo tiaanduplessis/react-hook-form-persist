@@ -15,6 +15,7 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
   - [⚙️ Install](#️-install)
   - [📖 Usage](#-usage)
     - [Additional examples](#additional-examples)
+    - [Conditional persistence](#conditional-persistence)
     - [Selecting fields](#selecting-fields)
     - [Custom serialization](#custom-serialization)
   - [📚 API](#-api)
@@ -101,6 +102,34 @@ Persist all form fields except password:
 ```js
 useFormPersist('form', {watch, setValue, exclude: ['password']});
 ```
+
+### Conditional persistence
+
+Call the hook unconditionally and pass `null` as the key to disable persistence:
+
+```js
+const { watch, setValue } = useForm();
+const { clear } = useFormPersist(persistKey ?? null, { watch, setValue });
+```
+
+Only `null` disables the hook. All string keys, including `''`, remain valid.
+The hook always returns `{ clear }`; `clear()` does nothing while disabled.
+While disabled, the hook does not call `watch`, access storage, invoke codecs,
+restore values, or run `onDataRestored`/`onTimeout`. Existing stored data and
+current form values are left intact, and edits are not persisted.
+
+Changing from `null` to a string reads that key's latest stored data using the
+current configuration, just like changing an enabled key. This also applies
+when re-enabling the same key: stored values can replace edits made while
+disabled. If no entry exists, the current selected values are saved. Expiration
+is checked when re-enabled; disabling does not pause the entry's age. Expired
+data is removed without immediately replacing it with unchanged form values.
+
+An empty `include` list only selects no fields; it still reads storage and
+handles expiration. Use a `null` key when persistence should be fully disabled.
+Enabling persistence retains the normal codec and storage error behavior below.
+An explicitly supplied `storage: window.localStorage` expression is evaluated
+by your component before the hook is called, even when its key is `null`.
 
 ### Selecting fields
 

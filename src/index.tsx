@@ -19,7 +19,7 @@ export interface FormPersistConfig {
 }
 
 const useFormPersist = (
-  name: string,
+  name: string | null,
   {
     storage,
     watch,
@@ -36,7 +36,7 @@ const useFormPersist = (
     deserialize = JSON.parse,
   }: FormPersistConfig
 ) => {
-  const watchedValues = watch();
+  const watchedValues = name === null ? null : watch();
   // Callers commonly pass an inline array. Compare its contents so restoration
   // does not run again merely because the array has a new identity.
   const includeKey = JSON.stringify(include);
@@ -89,12 +89,19 @@ const useFormPersist = (
     [storage]
   );
 
-  const clearStorage = useCallback(
-    () => getStorage().removeItem(name),
-    [getStorage, name]
-  );
+  const clearStorage = useCallback(() => {
+    if (name !== null) {
+      getStorage().removeItem(name);
+    }
+  }, [getStorage, name]);
 
   useEffect(() => {
+    if (name === null) {
+      restoredValues.current = null;
+      expiredValues.current = null;
+      return;
+    }
+
     const str = getStorage().getItem(name);
 
     if (str !== null) {
@@ -157,6 +164,10 @@ const useFormPersist = (
   }, [clearStorage, deserialize, getStorage, onDataRestored, setValue]);
 
   useEffect(() => {
+    if (name === null) {
+      return;
+    }
+
     const restored = restoredValues.current;
     if (
       restored &&
