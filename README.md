@@ -18,6 +18,7 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
     - [Conditional persistence](#conditional-persistence)
     - [Selecting fields](#selecting-fields)
     - [Custom serialization](#custom-serialization)
+    - [Handling unavailable storage](#handling-unavailable-storage)
   - [📚 API](#-api)
   - [💬 Contributing](#-contributing)
   - [🪪 License](#-license)
@@ -115,7 +116,7 @@ const { clear } = useFormPersist(persistKey ?? null, { watch, setValue });
 Only `null` disables the hook. All string keys, including `''`, remain valid.
 The hook always returns `{ clear }`; `clear()` does nothing while disabled.
 While disabled, the hook does not call `watch`, access storage, invoke codecs,
-restore values, or run `onDataRestored`/`onTimeout`. Existing stored data and
+restore values, or run `onDataRestored`/`onTimeout`/`onStorageError`. Existing stored data and
 current form values are left intact, and edits are not persisted.
 
 Changing from `null` to a string reads that key's latest stored data using the
@@ -214,10 +215,99 @@ again; changing `serialize` saves current values with the new serializer. A
 deserializer that creates new objects on every render can otherwise cause
 repeated restoration.
 
-Codec errors, malformed JSON, and storage errors propagate from the hook's
+By default, codec errors, malformed JSON, and storage errors propagate from the hook's
 effects to React. The hook does not silently discard invalid data or fall back
 to defaults. Use an error boundary if you need to handle these errors, and
 validate stored data in your deserializer when your format requires it.
+
+### Handling unavailable storage
+
+Browsers can deny access to storage, including the `window.sessionStorage`
+property itself, for example in restricted cross-origin frames. Storage writes
+can also fail when a quota is reached. To keep the form usable when persistence
+fails, opt in with `onStorageError`:
+
+```js
+useFormPersist('form', {
+  watch,
+  setValue,
+  onStorageError: (error) => {
+    console.warn('Form changes are no longer being saved', error);
+  }
+});
+```
+
+Without this callback, storage errors still throw. With it, the first storage
+error suspends persistence for this hook's current activation **before** calling
+`onStorageError(error)` with the original thrown value. An activation is one
+continuous enabled period with the same key and `storage` reference. Suspension:
+
+- Leaves current form values intact and stops further storage access, reads,
+  writes, expiry cleanup, and `clear()` calls for that activation.
+- Does not treat a failed read as an empty entry, overwrite unread data with
+  defaults, delete data to recover, or use an in-memory fallback. Previously
+  saved data may remain; a failed removal does not mean an entry was cleared.
+- Does not retry on edits, rerenders, or changes to callbacks, codecs, field
+  selection, or timeout. Changing or removing `onStorageError` alone does not
+  resume a suspended activation.
+- Starts fresh when the key or `storage` reference changes, after a `null` key
+  is re-enabled, or on a real remount. These transitions restore the latest
+  stored values first, which can replace edits made while saving was suspended.
+- Is local to each hook instance and survives development StrictMode effect
+  replay. Keep a custom storage object's reference stable.
+
+The handler is synchronous and is not awaited. A handler that throws propagates
+its error. Only errors from obtaining the default storage or calling storage's
+`getItem`, `setItem`, and `removeItem` are handled. Malformed JSON, codec errors,
+and errors in `watch`, `setValue`, `onDataRestored`, or `onTimeout` still propagate.
+When storage works, restoration, field selection and expiration behave as usual.
+For expiry, `onTimeout` runs before removal; a failed removal then suspends
+persistence and reports the error without restoring or rewriting expired data.
+`clear()` uses the same policy: it throws by default, or reports and suspends
+when a handler is provided. The hook cannot undo side effects performed by a
+custom storage implementation before it throws.
+
+An expression such as `storage: window.localStorage` runs in your component,
+before the hook can handle errors, even when its key is `null`. To defer that
+getter until the hook's guarded operations, supply a stable lazy adapter and
+the error handler. This TypeScript example implements the existing `Storage`
+interface; it deliberately lets errors reach the hook instead of returning a
+misleading `null` on failure:
+
+```tsx
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import useFormPersist from 'react-hook-form-persist';
+
+function createLazyLocalStorage(): Storage {
+  return {
+    get length() { return window.localStorage.length; },
+    key: (index) => window.localStorage.key(index),
+    clear: () => window.localStorage.clear(),
+    getItem: (key) => window.localStorage.getItem(key),
+    setItem: (key, value) => window.localStorage.setItem(key, value),
+    removeItem: (key) => window.localStorage.removeItem(key)
+  };
+}
+
+function Form() {
+  const { watch, setValue } = useForm();
+  const [storage] = useState(createLazyLocalStorage);
+  useFormPersist('form', {
+    watch,
+    setValue,
+    storage,
+    onStorageError: (error) => console.warn('Saving is unavailable', error)
+  });
+  // Render your fields here.
+  return null;
+}
+```
+
+The hook only calls the adapter's `getItem`, `setItem`, and `removeItem` methods.
+Creating this adapter does not read browser storage and does not create a shared
+fallback cache. Each form owns its adapter and its suspension state.
+
 ## 📚 API
 
 For all configuration options, please see the [API docs](https://paka.dev/npm/react-hook-form-persist).

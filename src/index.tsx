@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SetFieldValue } from "react-hook-form";
 import { createValuesMatcher } from "./values";
+import { createStorageActivation } from "./storage";
 
 export interface FormPersistConfig {
   storage?: Storage;
@@ -13,6 +14,7 @@ export interface FormPersistConfig {
   dirty?: boolean;
   touch?: boolean;
   onTimeout?: () => void;
+  onStorageError?: (error: unknown) => void;
   timeout?: number;
   serialize?: (data: Record<string, any>) => string;
   deserialize?: (serialized: string) => Record<string, any>;
@@ -31,11 +33,24 @@ const useFormPersist = (
     dirty = false,
     touch = false,
     onTimeout,
+    onStorageError,
     timeout,
     serialize = JSON.stringify,
     deserialize = JSON.parse,
   }: FormPersistConfig
 ) => {
+  const [previousActivation, setActivation] = useState(() =>
+    createStorageActivation(name, storage)
+  );
+  let activation = previousActivation;
+  if (activation.name !== name || activation.storage !== storage) {
+    activation = createStorageActivation(name, storage);
+    // Adjust only on an actual target change. Unlike effect cleanup or a memo
+    // cache, this does not revive suspended storage during StrictMode replay.
+    setActivation(activation);
+  }
+  const attemptStorage = activation.attempt;
+
   const watchedValues = name === null ? null : watch();
   // Callers commonly pass an inline array. Compare its contents so restoration
   // does not run again merely because the array has a new identity.
@@ -53,6 +68,7 @@ const useFormPersist = (
     [excludeKey]
   );
   const restoredValues = useRef<{
+    activation: typeof activation;
     values: any;
     name: string;
     storage: Storage;
@@ -62,6 +78,7 @@ const useFormPersist = (
     timeout: number | undefined;
   } | null>(null);
   const expiredValues = useRef<{
+    activation: typeof activation;
     matches: (values: any) => boolean;
     name: string;
     storage: Storage;
@@ -85,15 +102,19 @@ const useFormPersist = (
       );
 
   const getStorage = useCallback(
-    () => storage || window.sessionStorage,
-    [storage]
+    (handler: FormPersistConfig["onStorageError"]) =>
+      attemptStorage(() => storage || window.sessionStorage, handler),
+    [attemptStorage, storage]
   );
 
   const clearStorage = useCallback(() => {
     if (name !== null) {
-      getStorage().removeItem(name);
+      const target = getStorage(onStorageError);
+      if (target) {
+        attemptStorage(() => target.value.removeItem(name), onStorageError);
+      }
     }
-  }, [getStorage, name]);
+  }, [attemptStorage, getStorage, name, onStorageError]);
 
   useEffect(() => {
     if (name === null) {
@@ -102,16 +123,28 @@ const useFormPersist = (
       return;
     }
 
-    const str = getStorage().getItem(name);
+    const target = getStorage(onStorageError);
+    if (!target) {
+      return;
+    }
+    const read = attemptStorage(
+      () => target.value.getItem(name),
+      onStorageError
+    );
+    if (!read) {
+      return;
+    }
+    const str = read.value;
 
     if (str !== null) {
       const { _timestamp = null, ...values } = deserialize(str);
       // setValue updates watch on a subsequent render. Never write the stale
       // render's defaults over restored data, including StrictMode effect replay.
       restoredValues.current = {
+        activation,
         values: watchedValues,
         name,
-        storage: getStorage(),
+        storage: target.value,
         serialize,
         includedFields,
         excludedFields,
@@ -124,16 +157,17 @@ const useFormPersist = (
         // Read after registration, when RHF knows the input defaults. A later
         // mount render can return a fresh watch object without any user edits.
         expiredValues.current = {
+          activation,
           matches: createValuesMatcher(getPersistedValues(watch())),
           name,
-          storage: getStorage(),
+          storage: target.value,
           serialize,
           includedFields,
           excludedFields,
           timeout,
         };
         onTimeout && onTimeout();
-        clearStorage();
+        attemptStorage(() => target.value.removeItem(name), onStorageError);
         return;
       }
 
@@ -161,24 +195,33 @@ const useFormPersist = (
         onDataRestored(dataRestored);
       }
     }
-  }, [clearStorage, deserialize, getStorage, onDataRestored, setValue]);
+  }, [attemptStorage, deserialize, getStorage, name, onDataRestored, setValue]);
 
   useEffect(() => {
-    if (name === null) {
+    if (name === null || !activation.isActive()) {
       return;
     }
+
+    // Keep the no-write path lazy, and reuse one resolved storage object for
+    // comparisons and writing. In particular, include: [] needs no extra access.
+    let target: ReturnType<typeof getStorage>;
+    const getTarget = () => target || (target = getStorage(onStorageError));
 
     const restored = restoredValues.current;
     if (
       restored &&
+      restored.activation === activation &&
       restored.values === watchedValues &&
       restored.name === name &&
-      restored.storage === getStorage() &&
+      restored.storage === getTarget()?.value &&
       restored.serialize === serialize &&
       restored.includedFields === includedFields &&
       restored.excludedFields === excludedFields &&
       restored.timeout === timeout
     ) {
+      return;
+    }
+    if (!activation.isActive()) {
       return;
     }
     restoredValues.current = null;
@@ -187,8 +230,9 @@ const useFormPersist = (
     const expired = expiredValues.current;
     if (
       expired &&
+      expired.activation === activation &&
       expired.name === name &&
-      expired.storage === getStorage() &&
+      expired.storage === getTarget()?.value &&
       expired.serialize === serialize &&
       expired.includedFields === includedFields &&
       expired.excludedFields === excludedFields &&
@@ -197,15 +241,26 @@ const useFormPersist = (
     ) {
       return;
     }
+    if (!activation.isActive()) {
+      return;
+    }
     expiredValues.current = null;
 
     if (Object.entries(values).length) {
       if (timeout !== undefined) {
         values._timestamp = Date.now();
       }
-      getStorage().setItem(name, serialize(values));
+      const target = getTarget();
+      if (target) {
+        const serialized = serialize(values);
+        attemptStorage(
+          () => target.value.setItem(name, serialized),
+          onStorageError
+        );
+      }
     }
   }, [
+    attemptStorage,
     watchedValues,
     timeout,
     includedFields,
