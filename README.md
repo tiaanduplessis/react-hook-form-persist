@@ -20,6 +20,9 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
     - [Custom serialization](#custom-serialization)
     - [Handling unavailable storage](#handling-unavailable-storage)
   - [📚 API](#-api)
+    - [useFormPersist](#useformpersist)
+    - [Configuration](#configuration)
+    - [Return value](#return-value)
   - [💬 Contributing](#-contributing)
   - [🪪 License](#-license)
 
@@ -44,15 +47,22 @@ pnpm add react-hook-form-persist
 
 ## 📖 Usage
 
+This example uses React Hook Form 7:
+
 ```jsx
 import React from "react";
-import ReactDOM from "react-dom";
 import { useForm } from "react-hook-form";
 
 import useFormPersist from 'react-hook-form-persist'
 
-function App() {
-  const { register, handleSubmit, watch, errors, setValue } = useForm();
+export default function App() {
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors }
+  } = useForm();
 
   useFormPersist("storageKey", {
     watch, 
@@ -68,25 +78,22 @@ function App() {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <label>foo:
-        <input name="foo" ref={register} />
+        <input {...register("foo")} />
       </label>
 
       <label>bar (required):
-        <input name="bar" ref={register({ required: true })} />
+        <input {...register("bar", { required: true })} />
       </label>
-      {errors.required && <span>This field is required</span>}
+      {errors.bar && <span>This field is required</span>}
 
       <label>baz (excluded):
-        <input name="baz" ref={register} />
+        <input {...register("baz")} />
       </label>
 
       <input type="submit" />
     </form>
   );
 }
-
-const rootElement = document.getElementById("root");
-ReactDOM.render(<App />, rootElement);
 
 ```
 
@@ -310,7 +317,66 @@ fallback cache. Each form owns its adapter and its suspension state.
 
 ## 📚 API
 
-For all configuration options, please see the [API docs](https://paka.dev/npm/react-hook-form-persist).
+### useFormPersist
+
+The default export is a React hook. Call it unconditionally inside a component
+or another hook, with the `watch` and `setValue` functions from `useForm`:
+
+```js
+const { clear } = useFormPersist('form', { watch, setValue });
+```
+
+`name` is a required `string | null`: a string identifies the storage entry,
+including the empty string. Pass `null` to disable persistence without changing
+the order of hooks. See [Conditional persistence](#conditional-persistence).
+
+The reference describes the current repository source. Changes on the default
+branch may not yet be included in a published npm version.
+
+### Configuration
+
+`config` is required. TypeScript users can import the `FormPersistConfig` type
+from `react-hook-form-persist`. The only required properties are `watch` and
+`setValue`.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `watch` | Required | The form's `watch` function. Called without arguments to read the current form values while enabled. |
+| `setValue` | Required | The form's `setValue` function. Receives each selected restored field and its value, with the restoration flags below. |
+| `storage` | `window.sessionStorage` | A synchronous `Storage` object. The hook uses `getItem`, `setItem`, and `removeItem`. See [Handling unavailable storage](#handling-unavailable-storage) for guarded access and lazy adapters. |
+| `include` | `undefined` | Optional `string[]` allowlist of exact top-level field keys. Omit it to select all fields except exclusions; `[]` selects none. See [Selecting fields](#selecting-fields). |
+| `exclude` | `[]` | Optional `string[]` of exact top-level keys to omit from saving and restoration. Exclusion takes precedence over inclusion. |
+| `onDataRestored` | `undefined` | Optional `(data: any) => void` callback after an unexpired entry is restored. Receives only selected values, without `_timestamp`, or `{}` if none were selected. Not called when no entry exists or it expires. |
+| `validate` | `false` | Optional boolean passed as `shouldValidate` to `setValue` when restoring a field. |
+| `dirty` | `false` | Optional boolean passed as `shouldDirty` to `setValue` when restoring a field. |
+| `touch` | `false` | Optional boolean passed as `shouldTouch` to `setValue` when restoring a field. |
+| `timeout` | `undefined` | Optional expiration age in **milliseconds**. Use a positive number. Age is checked when reading stored data, not by a background timer. Omission or `0` disables the age check. See expiration details below. |
+| `onTimeout` | `undefined` | Optional `() => void` callback when a read finds an expired entry. Runs before that entry is removed; expired values are not restored. |
+| `onStorageError` | `undefined` | Optional `(error: unknown) => void` callback. Opts into suspending the failing storage activation before reporting its first storage error. Without it, storage errors throw. See [Handling unavailable storage](#handling-unavailable-storage) for recovery and which errors are handled. |
+| `serialize` | `JSON.stringify` | Optional synchronous `(data: Record<string, any>) => string` codec for selected values and any expiration metadata. See [Custom serialization](#custom-serialization). |
+| `deserialize` | `JSON.parse` | Optional synchronous `(serialized: string) => Record<string, any>` codec for stored strings. Field selection is applied to its result. |
+
+When `timeout` is supplied (including `0`), each nonempty write records a new
+`_timestamp` using `Date.now()`. A truthy timeout expires an entry when its age
+is strictly greater than that timeout. Expiration is checked during restoration,
+including when the key is enabled again. It is not a save delay, and changing
+`timeout` alone does not reload an entry. Preserve `_timestamp` in custom codecs;
+it is reserved metadata and is never restored as a form field.
+
+Callbacks and codecs are synchronous and are not awaited. Codec errors and
+errors in application callbacks still propagate; `onStorageError` only handles
+storage access failures. Keep restoration callbacks and codecs stable as
+described in the usage sections to avoid unintentionally restoring old data.
+
+### Return value
+
+The hook always returns `{ clear }`, where `clear` is a `() => void` function:
+
+`clear()` removes this hook's current storage entry. It does not reset form
+values or disable persistence, so later form changes can save another entry.
+It does nothing when the key is `null` or its storage activation is suspended.
+Removal errors throw by default, or report and suspend through `onStorageError`
+when supplied. A failed removal does not mean the entry was cleared.
 
 ## 💬 Contributing
 
