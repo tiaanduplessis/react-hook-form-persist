@@ -6,6 +6,7 @@ export interface FormPersistConfig {
   storage?: Storage;
   watch: (names?: string | string[]) => any;
   setValue: SetFieldValue<any>;
+  include?: string[];
   exclude?: string[];
   onDataRestored?: (data: any) => void;
   validate?: boolean;
@@ -23,6 +24,7 @@ const useFormPersist = (
     storage,
     watch,
     setValue,
+    include,
     exclude = [],
     onDataRestored,
     validate = false,
@@ -37,6 +39,14 @@ const useFormPersist = (
   const watchedValues = watch();
   // Callers commonly pass an inline array. Compare its contents so restoration
   // does not run again merely because the array has a new identity.
+  const includeKey = JSON.stringify(include);
+  const includedFields = useMemo(
+    () =>
+      includeKey === undefined
+        ? undefined
+        : (JSON.parse(includeKey) as string[]),
+    [includeKey]
+  );
   const excludeKey = JSON.stringify(exclude);
   const excludedFields = useMemo(
     () => JSON.parse(excludeKey) as string[],
@@ -47,6 +57,7 @@ const useFormPersist = (
     name: string;
     storage: Storage;
     serialize: typeof serialize;
+    includedFields: string[] | undefined;
     excludedFields: string[];
     timeout: number | undefined;
   } | null>(null);
@@ -55,16 +66,23 @@ const useFormPersist = (
     name: string;
     storage: Storage;
     serialize: typeof serialize;
+    includedFields: string[] | undefined;
     excludedFields: string[];
     timeout: number | undefined;
   } | null>(null);
 
+  const isSelected = (key: string) =>
+    key !== "_timestamp" &&
+    (includedFields === undefined || includedFields.includes(key)) &&
+    !excludedFields.includes(key);
+
   const getPersistedValues = (values: any) =>
-    excludedFields.length
-      ? Object.entries(values)
-          .filter(([key]) => !excludedFields.includes(key))
-          .reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {})
-      : Object.assign({}, values);
+    Object.entries(values)
+      .filter(([key]) => isSelected(key))
+      .reduce<Record<string, any>>(
+        (obj, [key, val]) => Object.assign(obj, { [key]: val }),
+        {}
+      );
 
   const getStorage = useCallback(
     () => storage || window.sessionStorage,
@@ -88,6 +106,7 @@ const useFormPersist = (
         name,
         storage: getStorage(),
         serialize,
+        includedFields,
         excludedFields,
         timeout,
       };
@@ -102,6 +121,7 @@ const useFormPersist = (
           name,
           storage: getStorage(),
           serialize,
+          includedFields,
           excludedFields,
           timeout,
         };
@@ -113,7 +133,7 @@ const useFormPersist = (
       expiredValues.current = null;
 
       Object.keys(values).forEach((key) => {
-        const shouldSet = !excludedFields.includes(key);
+        const shouldSet = isSelected(key);
         if (shouldSet) {
           dataRestored[key] = values[key];
           setValue(key, values[key], {
@@ -144,6 +164,7 @@ const useFormPersist = (
       restored.name === name &&
       restored.storage === getStorage() &&
       restored.serialize === serialize &&
+      restored.includedFields === includedFields &&
       restored.excludedFields === excludedFields &&
       restored.timeout === timeout
     ) {
@@ -158,6 +179,7 @@ const useFormPersist = (
       expired.name === name &&
       expired.storage === getStorage() &&
       expired.serialize === serialize &&
+      expired.includedFields === includedFields &&
       expired.excludedFields === excludedFields &&
       expired.timeout === timeout &&
       expired.matches(values)
@@ -172,7 +194,15 @@ const useFormPersist = (
       }
       getStorage().setItem(name, serialize(values));
     }
-  }, [watchedValues, timeout, excludedFields, getStorage, name, serialize]);
+  }, [
+    watchedValues,
+    timeout,
+    includedFields,
+    excludedFields,
+    getStorage,
+    name,
+    serialize,
+  ]);
 
   return {
     clear: clearStorage,
