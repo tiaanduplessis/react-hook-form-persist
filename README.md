@@ -15,6 +15,7 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
   - [⚙️ Install](#️-install)
   - [📖 Usage](#-usage)
     - [Additional examples](#additional-examples)
+    - [Selecting fields](#selecting-fields)
     - [Custom serialization](#custom-serialization)
   - [📚 API](#-api)
   - [💬 Contributing](#-contributing)
@@ -101,6 +102,39 @@ Persist all form fields except password:
 useFormPersist('form', {watch, setValue, exclude: ['password']});
 ```
 
+### Selecting fields
+
+Persist only selected fields with the optional `include` allowlist:
+
+```js
+useFormPersist('form', {watch, setValue, include: ['email']});
+```
+
+- Omit `include` to persist all fields except those in `exclude`.
+- Both options match exact top-level keys in the form values. Including `profile`
+  persists its whole nested object; `profile.email` does not select a nested path.
+- `exclude` takes precedence when a field appears in both lists.
+- `include: []` selects no fields. No fields are restored or written, and
+  `onDataRestored` receives `{}` when an unexpired stored entry is read.
+- Selection applies after deserialization, before `setValue` and `onDataRestored`,
+  and before serialization. `_timestamp` remains reserved expiration metadata;
+  including or excluding it does not make it a form field or disable expiration.
+
+Changing either list alone saves the currently selected form values; it does not
+reload old values from storage or reset fields in the form. Equal-content inline
+arrays are safe. Remounting, or changing the storage key, storage, deserializer,
+`onDataRestored`, or `setValue` reference, reads stored data using the current
+selection. Keep callbacks and any `setValue` wrapper stable (for example with
+`useCallback`); changing a restoration dependency while widening the selection
+can restore older stored values over current edits.
+
+When no current fields are selected, the hook skips writing and leaves any stored
+entry intact. Field selection is not a storage cleanup mechanism: old data may
+remain, and a later mount with a wider selection can restore it. Call the returned
+`clear()` to remove an entry explicitly. Expired entries are still removed even
+when `include` is empty. A nonempty write replaces the entry with the selected
+values, as with `exclude` alone.
+
 ### Custom serialization
 
 Storage contains strings. By default, the hook uses `JSON.stringify` to save
@@ -130,10 +164,10 @@ useFormPersist('form', { watch, setValue, serialize, deserialize });
 ```
 
 Both callbacks are optional and synchronous. `serialize` receives a record of
-form values after `exclude` has been applied and must return a string.
+form values after `include` and `exclude` have been applied and must return a string.
 `deserialize` receives the stored string and must return a record of restored
-values. Exclusions also apply to the returned record, so previously stored
-excluded fields are not restored. Only provide a callback if you need to change
+values. Field selection also applies to the returned record, so previously stored
+unselected or excluded fields are not restored. Only provide a callback if you need to change
 its corresponding JSON default.
 
 When `timeout` is configured, the hook adds a reserved `_timestamp` property to
@@ -142,8 +176,8 @@ example does with `...data`, so expiration still works. `_timestamp` is removed
 before calling `setValue` or `onDataRestored`; do not use it as a form field.
 
 Expired entries are removed without replacing them with unchanged defaults on
-mount or subsequent renders. Changes to non-excluded form values resume saving,
-as do changes to the storage key, storage, serializer, timeout, or exclusions.
+mount or subsequent renders. Changes to selected form values resume saving,
+as do changes to the storage key, storage, serializer, timeout, or field selection.
 
 Keep codec references stable, for example by defining them outside the component
 or using `useCallback`. Changing `deserialize` causes stored data to be restored
