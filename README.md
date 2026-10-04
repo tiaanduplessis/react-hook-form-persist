@@ -235,6 +235,15 @@ useFormPersist('form', {watch, setValue, include: ['email']});
   and before serialization. `_timestamp` remains reserved expiration metadata;
   including or excluding it does not make it a form field or disable expiration.
 
+The field-path segments `__proto__`, `constructor`, and `prototype` are reserved,
+including in dotted or bracketed names. A field with a reserved name, or with a
+reserved path in any nested enumerable field, is omitted before restoration,
+`onDataRestored`, and serialization. If a nested field is reserved, its entire
+top-level field is omitted; the original value is not partially rewritten or
+mutated. An `include` entry cannot override this check. Custom codecs should
+still return trusted, validated form values; this check does not validate their
+schema.
+
 Changing either list alone saves the currently selected form values; it does not
 reload old values from storage or reset fields in the form. Equal-content inline
 arrays are safe. Remounting, or changing the storage key, storage, deserializer,
