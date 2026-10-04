@@ -15,6 +15,7 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
   - [⚙️ Install](#️-install)
   - [📖 Usage](#-usage)
     - [Additional examples](#additional-examples)
+    - [Isolating persistence renders](#isolating-persistence-renders)
     - [Conditional persistence](#conditional-persistence)
     - [Selecting fields](#selecting-fields)
     - [Restoring arrays](#restoring-arrays)
@@ -112,6 +113,81 @@ Persist all form fields except password:
 ```js
 useFormPersist('form', {watch, setValue, exclude: ['password']});
 ```
+
+### Isolating persistence renders
+
+The ordinary recipe calls React Hook Form's `watch()` without arguments. That
+subscribes at the `useForm` level, so field edits can rerender the component
+owning the form. Moving the same `watch` call into a child does not move that
+subscription. See React Hook Form's [watch](https://react-hook-form.com/docs/useform/watch)
+and [useWatch](https://react-hook-form.com/docs/usewatch) documentation.
+
+For forms with synchronous `defaultValues`, use a small persistence child to
+isolate the value subscription. This React Hook Form 7 example uses the existing
+`watch` configuration as a values getter; `useWatch` supplies child-local
+updates, and `getValues` supplies the current form values without a root
+subscription:
+
+```jsx
+import React from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import useFormPersist from 'react-hook-form-persist';
+
+// Declare this outside Form so parent renders do not remount persistence.
+function FormPersistence({ control, getValues, setValue, persistKey }) {
+  useWatch({ control, disabled: persistKey === null });
+  useFormPersist(persistKey, { watch: getValues, setValue });
+  return null;
+}
+
+function Form({ persistKey = 'form' }) {
+  const { register, control, getValues, setValue } = useForm({
+    defaultValues: { title: '', details: '' }
+  });
+
+  return (
+    <form>
+      <input {...register('title')} />
+      <textarea {...register('details')} />
+      <FormPersistence
+        control={control}
+        getValues={getValues}
+        setValue={setValue}
+        persistKey={persistKey}
+      />
+    </form>
+  );
+}
+```
+
+Call `useWatch` before `useFormPersist`, unconditionally. `getValues` alone
+does not subscribe to edits; do not remove `useWatch` or call it inside the
+`watch` callback. Reading current values also avoids using a stale `useWatch`
+snapshot when persistence is re-enabled. Only `null` disables persistence;
+the observer is disabled separately by the same condition.
+
+Provide synchronous `defaultValues` for every field and keep
+`shouldUnregister: false` (the default) for this recipe. In our tests, omitting
+defaults can make later input registration look like an edit and recreate an
+expired entry. The scalar/nested-field recipe is tested with React 18.1.0 and
+React Hook Form 7.31.1, 7.43.9 and 7.89.0, including development StrictMode.
+It is not a guarantee for every version in the package's peer range.
+
+The persistence child still rerenders on value updates and saves eligible
+snapshots. This does not debounce writes or promise a particular speedup.
+Other subscriptions, validation and application state can still rerender the
+parent. `include`/`exclude` select stored fields, not observer subscriptions.
+Keep any supplied storage, restoration callbacks and codecs stable as described
+below. Options and the returned `clear()` retain their normal behavior; use
+`clear` from the persistence child rather than adding a second persistence hook.
+
+Check subscription placement separately for dynamic rows. With React Hook Form
+7.31.1 and 7.43.9, a `useFieldArray` in the parent can miss restoration performed
+by this child's earlier effect, leaving rendered rows stale even when form
+values and storage are correct. Calling `useFieldArray` first in the parent
+does not fix that cross-component effect order. See [Restoring arrays](#restoring-arrays)
+for the same-component recipe, and verify rendered rows as well as values
+before applying this child pattern to field arrays.
 
 ### Conditional persistence
 
@@ -411,7 +487,7 @@ from `react-hook-form-persist`. The only required properties are `watch` and
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `watch` | Required | The form's `watch` function. Called without arguments to read the current form values while enabled. |
+| `watch` | Required | Called without arguments to read current form values while enabled. Normally the form's `watch` function; the [isolated child recipe](#isolating-persistence-renders) uses `getValues` with a separate `useWatch` subscription. |
 | `setValue` | Required | The form's `setValue` function. Receives each selected restored field and its value, with the restoration flags below. |
 | `storage` | `window.sessionStorage` | A synchronous `Storage` object. The hook uses `getItem`, `setItem`, and `removeItem`. See [Handling unavailable storage](#handling-unavailable-storage) for guarded access and lazy adapters. |
 | `include` | `undefined` | Optional `string[]` allowlist of exact top-level field keys. Omit it to select all fields except exclusions; `[]` selects none. See [Selecting fields](#selecting-fields). |
