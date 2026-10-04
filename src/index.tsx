@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SetFieldValue } from "react-hook-form";
 import { createValuesMatcher } from "./values";
 import { createStorageActivation } from "./storage";
+import { isSafeField } from "./fields";
 
 export interface FormPersistConfig {
   storage?: Storage;
@@ -88,14 +89,15 @@ const useFormPersist = (
     timeout: number | undefined;
   } | null>(null);
 
-  const isSelected = (key: string) =>
+  const isSelected = (key: string, value: any) =>
     key !== "_timestamp" &&
     (includedFields === undefined || includedFields.includes(key)) &&
-    !excludedFields.includes(key);
+    !excludedFields.includes(key) &&
+    isSafeField(key, value);
 
   const getPersistedValues = (values: any) =>
     Object.entries(values)
-      .filter(([key]) => isSelected(key))
+      .filter(([key, value]) => isSelected(key, value))
       .reduce<Record<string, any>>(
         (obj, [key, val]) => Object.assign(obj, { [key]: val }),
         {}
@@ -173,11 +175,11 @@ const useFormPersist = (
 
       expiredValues.current = null;
 
-      Object.keys(values).forEach((key) => {
-        const shouldSet = isSelected(key);
+      Object.entries(values).forEach(([key, value]) => {
+        const shouldSet = isSelected(key, value);
         if (shouldSet) {
-          dataRestored[key] = values[key];
-          setValue(key, values[key], {
+          dataRestored[key] = value;
+          setValue(key, value, {
             shouldValidate: validate,
             shouldDirty: dirty,
             shouldTouch: touch,
