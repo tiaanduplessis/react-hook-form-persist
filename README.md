@@ -17,7 +17,9 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
     - [Additional examples](#additional-examples)
     - [Conditional persistence](#conditional-persistence)
     - [Selecting fields](#selecting-fields)
+    - [Restoring arrays](#restoring-arrays)
     - [Custom serialization](#custom-serialization)
+    - [File inputs](#file-inputs)
     - [Handling unavailable storage](#handling-unavailable-storage)
   - [📚 API](#-api)
     - [useFormPersist](#useformpersist)
@@ -172,6 +174,38 @@ remain, and a later mount with a wider selection can restore it. Call the return
 when `include` is empty. A nonempty write replaces the entry with the selected
 values, as with `exclude` alone.
 
+### Restoring arrays
+
+JSON-compatible arrays, including arrays of objects used by controlled
+multi-selects, can be persisted with the default codecs. Connect a controlled
+component to React Hook Form's `Controller` or `useController` so its displayed
+selection follows the restored form value.
+
+For dynamic rows, initialize `useFieldArray` before `useFormPersist`:
+
+```js
+const { control, watch, setValue } = useForm({
+  defaultValues: { filters: [] }
+});
+const { fields, append, remove } = useFieldArray({ control, name: 'filters' });
+useFormPersist('filters', { watch, setValue });
+```
+
+The persistence hook restores values through `setValue`; it does not manage
+field-array subscriptions or registration. With React Hook Form 7.31.1 and
+7.43.9, calling persistence first can restore form values and storage while
+leaving the rendered rows empty. Initializing `useFieldArray` first avoids
+that ordering problem in those versions. React Hook Form 7.89.0 supports
+both orders in our remount tests.
+
+Keep the default `shouldUnregister: false` for this pattern. In development
+StrictMode, our React Hook Form 7.89.0 tests with `shouldUnregister: true`
+leave restored dynamic rows out of sync, even though form values and storage
+retain the array. The same case occurs with a plain `useEffect` calling
+`setValue`, without this persistence hook. If you need unregister-on-unmount,
+verify the rendered rows as well as form values with your React Hook Form
+version and registration setup.
+
 ### Custom serialization
 
 Storage contains strings. By default, the hook uses `JSON.stringify` to save
@@ -226,6 +260,42 @@ By default, codec errors, malformed JSON, and storage errors propagate from the 
 effects to React. The hook does not silently discard invalid data or fall back
 to defaults. Use an error boundary if you need to handle these errors, and
 validate stored data in your deserializer when your format requires it.
+
+### File inputs
+
+`File` and `FileList` values do not round-trip through the default JSON codecs.
+Keep uploads in application-managed state and leave file fields out of
+persistence. For example, exclude the exact top-level file field:
+
+```jsx
+const { register, watch, setValue } = useForm();
+useFormPersist('form', { watch, setValue, exclude: ['attachment'] });
+
+// Register the native input without binding a saved value to it.
+<input type="file" {...register('attachment')} />
+```
+
+Alternatively, allowlist only the fields that should be saved:
+
+```js
+useFormPersist('form', { watch, setValue, include: ['title', 'description'] });
+```
+
+Selection applies on both save and restore, so these configurations also
+ignore an `attachment` value left by an older stored entry. Selection matches
+top-level keys: for `profile.attachment`, exclude `profile` or use an
+application-specific persisted shape; `exclude: ['profile.attachment']` does
+not exclude that nested path. See [Selecting fields](#selecting-fields) for
+storage cleanup behavior.
+
+A browser file input cannot have a filename or saved object assigned to its
+`value`; it accepts only the empty string programmatically. Such assignments
+can throw `InvalidStateError`. Custom codecs cannot restore a browser file
+selection or bypass this restriction. Excluding the field does not fix a
+component that independently binds a nonempty `value` to its file input.
+After a real remount, the user must select the file again unless your app
+separately retains and manages the upload. This hook does not automatically store file bytes
+or repopulate native file inputs.
 
 ### Handling unavailable storage
 
