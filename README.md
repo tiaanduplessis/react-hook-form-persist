@@ -17,6 +17,7 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
     - [Additional examples](#additional-examples)
     - [Isolating persistence renders](#isolating-persistence-renders)
     - [Conditional persistence](#conditional-persistence)
+    - [Waiting for restoration](#waiting-for-restoration)
     - [Selecting fields](#selecting-fields)
     - [Restoring arrays](#restoring-arrays)
     - [Custom serialization](#custom-serialization)
@@ -199,7 +200,8 @@ const { clear } = useFormPersist(persistKey ?? null, { watch, setValue });
 ```
 
 Only `null` disables the hook. All string keys, including `''`, remain valid.
-The hook always returns `{ clear }`; `clear()` does nothing while disabled.
+The hook always returns `{ clear, isSynchronized }`; `clear()` does nothing and
+`isSynchronized` is `false` while disabled.
 While disabled, the hook does not call `watch`, access storage, invoke codecs,
 restore values, or run `onDataRestored`/`onTimeout`/`onStorageError`. Existing stored data and
 current form values are left intact, and edits are not persisted.
@@ -216,6 +218,55 @@ handles expiration. Use a `null` key when persistence should be fully disabled.
 Enabling persistence retains the normal codec and storage error behavior below.
 An explicitly supplied `storage: window.localStorage` expression is evaluated
 by your component before the hook is called, even when its key is `null`.
+
+### Waiting for restoration
+
+Use `isSynchronized` to wait for the initial storage check before using form
+values in an effect. This addition describes unreleased repository source and
+will be available after a package release.
+
+```jsx
+const { watch, setValue } = useForm({ defaultValues: { query: '' } });
+const { isSynchronized } = useFormPersist(persistKey, { watch, setValue });
+const query = watch('query');
+
+React.useEffect(() => {
+  if (!isSynchronized) return;
+  // Use query here, after any selected saved fields have been restored.
+}, [isSynchronized, query]);
+```
+
+The flag starts `false` and becomes `true` on a render after the current
+activation's initial storage check succeeds. An activation is one continuous
+enabled period with the same key and supplied `storage` reference:
+
+- An unexpired entry is ready after selected fields are set and the synchronous
+  `onDataRestored` callback returns. Empty storage and entries with no selected
+  fields also become ready. Unselected or missing fields keep their current values.
+- An expired entry becomes ready after `onTimeout` returns and removal succeeds.
+  The existing timeout behavior still prevents unchanged defaults from
+  immediately recreating the entry.
+- Changing the key or `storage` reference makes the flag `false` immediately,
+  before the new target is checked. Passing `null` keeps it `false`; re-enabling
+  starts a new check, even for the same key. A real remount also starts `false`.
+- Failed initial storage access, reads, or expiry removal do not become ready.
+  With `onStorageError`, the activation remains suspended and `false` until a
+  new activation begins. Use that callback to show a fallback or error state
+  rather than displaying a loading indicator indefinitely. Without it, the error
+  propagates. Deserialization, `setValue`, and restoration callback errors also
+  propagate without completing readiness.
+
+This is an initial-restoration flag, not a saving, validation, or storage-health
+status. Later writes and `clear()` do not reset it, even if they fail. Changes to
+callbacks or codecs do not start a new activation; keep them stable because the
+existing restoration effect can run again when their references change. Async
+default values, validation, and promises returned by callbacks are not awaited.
+
+Readiness is set only during the synchronous restoration effect; there is no
+background completion after unmount. Development StrictMode may replay effects,
+and application effects can run again on remounts or dependency changes. This
+flag does not guarantee exactly one API request; give requests appropriate
+cleanup, cancellation, or deduplication for your application.
 
 ### Selecting fields
 
@@ -525,9 +576,13 @@ described in the usage sections to avoid unintentionally restoring old data.
 
 ### Return value
 
-The hook always returns `{ clear }`, where `clear` is a `() => void` function:
+The hook always returns `{ clear, isSynchronized }`:
 
-`clear()` removes this hook's current storage entry. It does not reset form
+`isSynchronized` is a `boolean` indicating that the current enabled activation's
+initial restoration check completed successfully. See
+[Waiting for restoration](#waiting-for-restoration) for transitions and errors.
+
+`clear` is a `() => void` function. `clear()` removes this hook's current storage entry. It does not reset form
 values or disable persistence, so later form changes can save another entry.
 It does nothing when the key is `null` or its storage activation is suspended.
 Removal errors throw by default, or report and suspend through `onStorageError`

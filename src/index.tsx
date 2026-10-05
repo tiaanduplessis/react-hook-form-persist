@@ -51,6 +51,9 @@ const useFormPersist = (
     setActivation(activation);
   }
   const attemptStorage = activation.attempt;
+  const [synchronizedActivation, setSynchronizedActivation] = useState<
+    typeof activation | null
+  >(null);
 
   const watchedValues = name === null ? null : watch();
   // Callers commonly pass an inline array. Compare its contents so restoration
@@ -169,7 +172,13 @@ const useFormPersist = (
           timeout,
         };
         onTimeout && onTimeout();
-        attemptStorage(() => target.value.removeItem(name), onStorageError);
+        const removed = attemptStorage(
+          () => target.value.removeItem(name),
+          onStorageError
+        );
+        if (removed) {
+          setSynchronizedActivation(activation);
+        }
         return;
       }
 
@@ -197,6 +206,11 @@ const useFormPersist = (
         onDataRestored(dataRestored);
       }
     }
+
+    // Publish readiness on a fresh render, after synchronous restoration and
+    // callbacks succeed. The activation identity prevents a new target from
+    // exposing the previous target's readiness before its values are restored.
+    setSynchronizedActivation(activation);
   }, [attemptStorage, deserialize, getStorage, name, onDataRestored, setValue]);
 
   useEffect(() => {
@@ -274,6 +288,7 @@ const useFormPersist = (
 
   return {
     clear: clearStorage,
+    isSynchronized: name !== null && synchronizedActivation === activation,
   };
 };
 
