@@ -15,6 +15,7 @@ Persist and populate [react-hook-form](https://react-hook-form.com/) form using 
   - [⚙️ Install](#️-install)
   - [📖 Usage](#-usage)
     - [Additional examples](#additional-examples)
+    - [Default values](#default-values)
     - [Isolating persistence renders](#isolating-persistence-renders)
     - [Conditional persistence](#conditional-persistence)
     - [Waiting for restoration](#waiting-for-restoration)
@@ -114,6 +115,54 @@ Persist all form fields except password:
 ```js
 useFormPersist('form', {watch, setValue, exclude: ['password']});
 ```
+
+### Default values
+
+Supply initial values to React Hook Form:
+
+```jsx
+const { watch, setValue, reset } = useForm({
+  defaultValues: { title: '', details: '', password: '' }
+});
+useFormPersist('form', { watch, setValue, exclude: ['password'] });
+```
+
+Selected saved fields replace the current form values. Missing top-level fields
+and excluded fields keep their current values, normally the RHF defaults on
+initial mount. For example, saved `{ title: 'Draft' }` restores the title while
+keeping the default details and password. Saved `null`, `false`, `0`, and `''`
+are passed to RHF's `setValue` without substituting defaults; RHF can normalize
+them for native inputs. When no entry exists, the current selected values are
+saved. Excluded fields can have RHF defaults without being saved or restored.
+
+Restoration uses `setValue`, so RHF retains its own default-value baseline:
+`reset()` returns to those defaults, and `dirty: true` compares restored values
+against them. Changing the `defaultValues` object on a rerender does not reset
+an existing form; use RHF's [reset](https://react-hook-form.com/docs/useform/reset)
+when that is intended. Changing the persistence key alone also does not reset
+the form. These rules do not add a deep merge for nested objects or arrays.
+
+For async RHF defaults, keep persistence disabled until loading completes so
+restoration happens after RHF initializes the form:
+
+```jsx
+const { watch, setValue, formState: { isLoading } } = useForm({
+  defaultValues: async () => loadDefaults()
+});
+const { isSynchronized } = useFormPersist(isLoading ? null : 'form', {
+  watch,
+  setValue
+});
+```
+
+In effects that use initialized values, wait for both `!isLoading` and
+`isSynchronized`. The persistence flag does not await async defaults by itself.
+The null-key and readiness APIs in this example describe repository source and
+require a package release containing those additions.
+
+The async recipe requires RHF's `isLoading` support (7.41+); it is tested with
+RHF 7.43.9 and 7.89.0 on React 18.1.0, in normal mode and StrictMode. For older
+RHF versions, load the data before mounting a form with synchronous defaults.
 
 ### Isolating persistence renders
 
